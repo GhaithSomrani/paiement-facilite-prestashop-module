@@ -1,0 +1,7 @@
+Hello {firstname} {lastname},
+
+Your instalment payment request #{id_request} for {amount} has been received on {date}.
+Our team will review it within 48 business hours.
+
+Best regards,
+The Sales Team

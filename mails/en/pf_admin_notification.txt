@@ -1,0 +1,6 @@
+New instalment payment request #{id_request}
+Customer: {firstname} {lastname}
+Amount: {amount}
+Date: {date}
+
+Log in to the back office to process this request.

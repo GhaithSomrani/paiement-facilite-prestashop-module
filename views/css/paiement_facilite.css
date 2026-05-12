@@ -1,0 +1,310 @@
+/* ============================================================
+   paiementfacilite.css — Bootstrap 4 extension
+   ============================================================ */
+
+/* ── Wrapper ── */
+.pf-wrapper {
+  max-width: 900px;
+  margin: 0 auto;
+  padding-bottom: 3rem;
+}
+
+/* ── Progress bar ── */
+.pf-progress-steps {
+  counter-reset: step;
+}
+
+.pf-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: .75rem;
+  color: #adb5bd;
+  position: relative;
+  flex: 1;
+  text-align: center;
+}
+
+.pf-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #dee2e6;
+  color: #495057;
+  font-weight: 700;
+  font-size: .9rem;
+  margin-bottom: .25rem;
+  transition: background .25s, color .25s;
+}
+
+.pf-step.active .pf-step-num {
+  background: #1565C0;
+  color: #fff;
+}
+
+.pf-step.completed .pf-step-num {
+  background: #28a745;
+  color: #fff;
+}
+
+.pf-step.active {
+  color: #1565C0;
+  font-weight: 600;
+}
+
+.pf-step.completed {
+  color: #28a745;
+}
+
+/* ── Step panels ── */
+.pf-step-panel {
+  display: none;
+}
+
+.pf-step-panel.active {
+  display: block;
+  animation: pf-fadein .3s ease;
+}
+
+@keyframes pf-fadein {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Cards ── */
+.pf-card {
+  background: #fff;
+  border: 1px solid #dee2e6;
+  border-radius: .5rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  margin-bottom: 1.5rem;
+  overflow: hidden;
+}
+
+.pf-card-header {
+  background: linear-gradient(90deg, #1565C0 0%, #1976D2 100%);
+  color: #fff;
+  padding: 1rem 1.5rem;
+  border-radius: .5rem .5rem 0 0;
+}
+
+.pf-card-header h3 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 600;
+}
+
+.pf-card-body {
+  padding: 1.5rem;
+}
+
+.pf-card-footer {
+  background: #f8f9fa;
+  padding: .75rem 1.5rem;
+  border-top: 1px solid #dee2e6;
+}
+
+/* ── Client type cards ── */
+.pf-type-card {
+  display: block;
+  cursor: pointer;
+  border: 2px solid #dee2e6;
+  border-radius: .5rem;
+  transition: border-color .2s, box-shadow .2s;
+  margin: 0;
+}
+
+.pf-type-card input[type=radio] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.pf-type-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  gap: .75rem;
+  font-size: 1rem;
+}
+
+.pf-type-card:hover,
+.pf-type-card.selected {
+  border-color: #1565C0;
+  box-shadow: 0 0 0 3px rgba(21,101,192,.15);
+}
+
+.pf-type-card.selected {
+  background: #E3F2FD;
+}
+
+/* Icons placeholder (font-based or SVG) */
+.pf-icon-person::before { content: '👤'; font-size: 2rem; }
+.pf-icon-building::before { content: '🏢'; font-size: 2rem; }
+
+/* ── Address card (billing) ── */
+.pf-address-card {
+  background: #f0f4ff;
+  border: 1px solid #b3c6f0;
+  border-radius: .4rem;
+  padding: 1rem 1.25rem;
+  font-size: .9rem;
+}
+
+.pf-address-label {
+  font-size: .7rem;
+  text-transform: uppercase;
+  letter-spacing: .05em;
+  color: #1565C0;
+  font-weight: 700;
+  margin-bottom: .4rem;
+}
+
+/* ── Credit summary cards ── */
+.pf-credit-summary {
+  margin-top: 1.5rem;
+}
+
+.pf-summary-card {
+  background: #f8f9fa;
+  border: 1px solid #dee2e6;
+  border-radius: .4rem;
+  padding: 1rem;
+  text-align: center;
+  height: 100%;
+}
+
+.pf-summary-label {
+  font-size: .75rem;
+  color: #6c757d;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: .5rem;
+}
+
+.pf-summary-value {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #1565C0;
+}
+
+/* ── Slider ── */
+.pf-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: linear-gradient(to right, #1565C0 0%, #1565C0 50%, #dee2e6 50%, #dee2e6 100%);
+  outline: none;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+
+.pf-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1565C0;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #1565C0;
+  cursor: grab;
+}
+
+.pf-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1565C0;
+  border: 3px solid #fff;
+  cursor: grab;
+}
+
+/* ── Upload zone ── */
+.pf-upload-zone {
+  border: 2px dashed #b0c4de;
+  border-radius: .4rem;
+  padding: 1rem;
+  text-align: center;
+  background: #f8fbff;
+  transition: background .2s, border-color .2s;
+  cursor: pointer;
+  position: relative;
+}
+
+.pf-upload-zone.dragover {
+  background: #E3F2FD;
+  border-color: #1565C0;
+}
+
+.pf-upload-zone input[type=file] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+
+.pf-upload-label {
+  cursor: pointer;
+  color: #1565C0;
+  font-size: .9rem;
+  margin: 0;
+  pointer-events: none;
+}
+
+.pf-upload-label .material-icons {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: .25rem;
+}
+
+.pf-file-list {
+  margin-top: .5rem;
+}
+
+.pf-file-item {
+  font-size: .8rem;
+  padding: .1rem 0;
+}
+
+.pf-doc-label {
+  font-weight: 600;
+  margin-bottom: .4rem;
+  display: block;
+}
+
+.pf-doc-group {
+  margin-bottom: 1rem;
+}
+
+/* ── Confirmation page ── */
+.pf-confirmation {
+  max-width: 600px;
+  margin: 0 auto;
+}
+
+.pf-confirm-card {
+  border-radius: .5rem;
+  box-shadow: 0 2px 12px rgba(0,0,0,.08);
+}
+
+.pf-confirm-icon svg {
+  filter: drop-shadow(0 4px 6px rgba(40,167,69,.2));
+}
+
+/* ── Responsive ── */
+@media (max-width: 576px) {
+  .pf-step small { display: none; }
+  .pf-step-num { width: 26px; height: 26px; font-size: .8rem; }
+  .pf-type-inner { padding: 1.25rem .5rem; }
+  .pf-card-body { padding: 1rem; }
+  .pf-summary-value { font-size: 1.1rem; }
+}

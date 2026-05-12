@@ -1,0 +1,8 @@
+Bonjour {firstname} {lastname},
+
+Votre demande de paiement par facilité n°{id_request} ({amount}) a été APPROUVÉE.
+
+Notre équipe vous contactera prochainement.
+
+Cordialement,
+L'équipe commerciale

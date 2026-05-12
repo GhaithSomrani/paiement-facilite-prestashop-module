@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<module>
+    <name>paiementfacilite</name>
+    <displayName><![CDATA[Paiement par facilité / traite]]></displayName>
+    <version><![CDATA[1.0.0]]></version>
+    <description><![CDATA[Module de paiement par facilité ou traite pour clients salariés et sociétés]]></description>
+    <author><![CDATA[Ghaith Somrani]]></author>
+    <tab><![CDATA[payments_gateways]]></tab>
+    <is_configurable>1</is_configurable>
+    <need_instance>1</need_instance>
+    <limited_countries></limited_countries>
+</module>

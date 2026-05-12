@@ -1,0 +1,10 @@
+Bonjour {firstname} {lastname},
+
+Nous avons bien reçu votre demande de paiement par facilité n°{id_request}.
+Montant : {amount}
+Date : {date}
+
+Notre équipe traitera votre dossier dans un délai de 48 heures ouvrables.
+
+Cordialement,
+L'équipe commerciale

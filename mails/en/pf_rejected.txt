@@ -1,0 +1,7 @@
+Hello {firstname} {lastname},
+
+Your instalment payment request #{id_request} could not be approved.
+Please contact us for more information.
+
+Best regards,
+The Sales Team

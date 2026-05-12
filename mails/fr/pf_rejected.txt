@@ -1,0 +1,8 @@
+Bonjour {firstname} {lastname},
+
+Votre demande de paiement par facilité n°{id_request} n'a pas pu être accordée.
+
+Pour plus d'informations, contactez-nous directement.
+
+Cordialement,
+L'équipe commerciale

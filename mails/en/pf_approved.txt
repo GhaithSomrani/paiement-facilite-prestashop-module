@@ -1,0 +1,7 @@
+Hello {firstname} {lastname},
+
+Your instalment payment request #{id_request} ({amount}) has been APPROVED.
+Our team will contact you shortly.
+
+Best regards,
+The Sales Team

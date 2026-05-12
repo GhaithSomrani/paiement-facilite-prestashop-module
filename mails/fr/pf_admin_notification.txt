@@ -1,0 +1,6 @@
+Nouvelle demande de paiement par facilité n°{id_request}
+Client : {firstname} {lastname}
+Montant : {amount}
+Date : {date}
+
+Connectez-vous au back-office pour traiter cette demande.
