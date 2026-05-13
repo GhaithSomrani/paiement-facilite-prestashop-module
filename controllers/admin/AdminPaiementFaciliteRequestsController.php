@@ -59,11 +59,6 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             'status' => [
                 'title'         => $this->l('Statut'),
                 'type'          => 'select',
-                'color'         => [
-                    'pending'  => '#FFA500',
-                    'approved' => '#28A745',
-                    'rejected' => '#DC3545',
-                ],
                 'list'          => [
                     'pending'  => $this->l('En attente'),
                     'approved' => $this->l('Approuvé'),
@@ -157,6 +152,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
     // VIEW (detail)
     // -------------------------------------------------------------------------
 
+
     public function renderView()
     {
         $id_request = (int) Tools::getValue('id_request');
@@ -189,10 +185,10 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             'pf_address'    => $address,
             'pf_org'        => $org,
             'pf_docs'       => $docs,
-            'pf_upload_base'=> $upload_base,
+            'pf_upload_base' => $upload_base,
             'pf_linked_order_id' => $linked ? (int) $linked['id_order'] : 0,
             'pf_order_url'  => $order_url,
-            'pf_approve_url'=> $this->context->link->getAdminLink('AdminPaiementFaciliteRequests')
+            'pf_approve_url' => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests')
                 . '&id_request=' . $id_request . '&action=approve&token=' . Tools::getAdminToken('AdminPaiementFaciliteRequests'),
             'pf_reject_url' => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests')
                 . '&id_request=' . $id_request . '&action=reject&token=' . Tools::getAdminToken('AdminPaiementFaciliteRequests'),
@@ -200,7 +196,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             'doc_labels'    => $this->getDocLabels(),
         ]);
 
-        return $this->createTemplate('request_detail.tpl')->fetch();
+        return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'paiementfacilite/views/templates/admin/view_request.tpl');
     }
 
     private function getDocLabels()

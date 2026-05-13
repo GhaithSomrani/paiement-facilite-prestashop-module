@@ -184,7 +184,7 @@
           <tbody>
             {foreach $pf_docs as $doc}
             <tr>
-              <td>{if isset($doc_labels[$doc.doc_type])}{$doc_labels[$doc.doc_type]}{else}{$doc.doc_type|escape:'html'}{/if}</td>
+              {* <td>{if isset($doc_labels[$doc.doc_type])}{$doc_labels[$doc.doc_type]}{else}{$doc.doc_type|escape:'html'}{/if}</td> *}
               <td>{$doc.filename|escape:'html'}</td>
               <td>{$doc.date_add|escape:'html'}</td>
               <td>
