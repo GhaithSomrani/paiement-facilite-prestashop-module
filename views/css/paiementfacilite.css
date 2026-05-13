@@ -1,0 +1,138 @@
+/* paiementfacilite — minimal CSS, relies on Bootstrap 4 for everything else */
+
+/* ── Multi-step panel visibility ── */
+.pf-step-panel        { display: none; }
+.pf-step-panel.active { display: block; animation: pf-fadein .25s ease; }
+
+@keyframes pf-fadein {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+/* ── Progress step indicator ── */
+.pf-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  font-size: .75rem;
+  color: #adb5bd;
+  flex: 1;
+  text-align: center;
+}
+
+.pf-step-num {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #dee2e6;
+  color: #495057;
+  font-weight: 700;
+  margin-bottom: .25rem;
+  transition: background .2s, color .2s;
+}
+
+.pf-step.active            { color: #1565C0; font-weight: 600; }
+.pf-step.active .pf-step-num   { background: #1565C0; color: #fff; }
+.pf-step.completed             { color: #28a745; }
+.pf-step.completed .pf-step-num { background: #28a745; color: #fff; }
+
+/* ── Client-type selection cards ── */
+.pf-type-card {
+  display: block;
+  cursor: pointer;
+  border: 2px solid #dee2e6;
+  border-radius: .4rem;
+  margin: 0;
+  transition: border-color .2s, box-shadow .2s;
+}
+.pf-type-card input[type=radio] {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.pf-type-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 2rem 1rem;
+  gap: .75rem;
+}
+.pf-type-card:hover,
+.pf-type-card.selected {
+  border-color: #1565C0;
+  box-shadow: 0 0 0 3px rgba(21,101,192,.15);
+}
+.pf-type-card.selected    { background: #E3F2FD; }
+.pf-icon-person::before   { content: '👤'; font-size: 2rem; }
+.pf-icon-building::before { content: '🏢'; font-size: 2rem; }
+
+/* ── File upload zone ── */
+.pf-upload-zone {
+  border: 2px dashed #b0c4de;
+  border-radius: .4rem;
+  padding: 1rem;
+  text-align: center;
+  background: #f8fbff;
+  position: relative;
+  cursor: pointer;
+  transition: background .2s, border-color .2s;
+}
+.pf-upload-zone.dragover  { background: #E3F2FD; border-color: #1565C0; }
+.pf-upload-zone input[type=file] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  width: 100%;
+  height: 100%;
+  cursor: pointer;
+}
+.pf-upload-label {
+  cursor: pointer;
+  color: #1565C0;
+  font-size: .9rem;
+  margin: 0;
+  pointer-events: none;
+}
+.pf-upload-label .material-icons { display: block; font-size: 2rem; margin-bottom: .25rem; }
+.pf-file-item { font-size: .8rem; padding: .1rem 0; }
+
+/* ── Range slider (browser default is unstyled) ── */
+.pf-slider {
+  -webkit-appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #dee2e6;
+  outline: none;
+  padding: 0;
+  border: none;
+  cursor: pointer;
+}
+.pf-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1565C0;
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 2px #1565C0;
+  cursor: grab;
+}
+.pf-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #1565C0;
+  border: 3px solid #fff;
+  cursor: grab;
+}
+
+@media (max-width: 576px) {
+  .pf-step small  { display: none; }
+  .pf-step-num    { width: 26px; height: 26px; font-size: .8rem; }
+  .pf-type-inner  { padding: 1.25rem .5rem; }
+}
