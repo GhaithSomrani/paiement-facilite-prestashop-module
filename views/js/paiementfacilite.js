@@ -48,6 +48,7 @@
       PF.isCompany = (val == 1);
       toggleRetiredBlock();
       toggleCompanyFields();
+      toggleDocBlocks();
     });
 
     // Retired toggle buttons
@@ -111,12 +112,21 @@
   }
 
   function toggleDocBlocks() {
-    if (PF.isRetired) {
+    if (PF.isCompany) {
       $('#pf-doc-salarie-block').hide();
-      $('#pf-doc-retraite-block').show();
-    } else {
-      $('#pf-doc-salarie-block').show();
       $('#pf-doc-retraite-block').hide();
+      $('#pf-doc-societe-block').show();
+      $('#pf-cin-doc-title').text('CIN du gérant *');
+    } else {
+      $('#pf-doc-societe-block').hide();
+      $('#pf-cin-doc-title').text("Carte d'identité nationale (CIN) *");
+      if (PF.isRetired) {
+        $('#pf-doc-salarie-block').hide();
+        $('#pf-doc-retraite-block').show();
+      } else {
+        $('#pf-doc-salarie-block').show();
+        $('#pf-doc-retraite-block').hide();
+      }
     }
   }
 
@@ -314,18 +324,40 @@
 
       case 6:
         if (!PF.belongsToPartner) {
+          // Common required docs for everyone
           ['cin_recto', 'cin_verso', 'rib', 'facture_steg'].forEach(function (name) {
             var $inp = $('input[name="' + name + '"]');
             if ($inp.length && (!$inp[0].files || !$inp[0].files.length)) {
-              errors.push('Le document "' + name.replace(/_/g, ' ') + '" est obligatoire.');
+              var label = PF.isCompany && name.indexOf('cin') === 0
+                ? name.replace('cin_', 'CIN gérant ').replace('_', ' ')
+                : name.replace(/_/g, ' ');
+              errors.push('Le document "' + label + '" est obligatoire.');
             }
           });
-          if (PF.isRetired) {
-            var $att = $('input[name=attestation_retraite]');
-            if (!$att[0].files || !$att[0].files.length) errors.push("L'attestation de retraite est obligatoire.");
+
+          if (PF.isCompany) {
+            // Company-specific docs
+            var $rc = $('input[name="registre_commerce"]');
+            if ($rc.length && (!$rc[0].files || !$rc[0].files.length)) {
+              errors.push('Le registre de commerce / patente est obligatoire.');
+            }
+            var $st = $('input[name="statuts_societe[]"]').first();
+            if ($st.length && (!$st[0].files || !$st[0].files.length)) {
+              errors.push('Les statuts de la société sont obligatoires.');
+            }
           } else {
-            var $fp = $('input[name="fiche_paie[]"]').first();
-            if (!$fp[0].files || !$fp[0].files.length) errors.push('Au moins une fiche de paie est obligatoire.');
+            // Individual-specific docs
+            if (PF.isRetired) {
+              var $att = $('input[name=attestation_retraite]');
+              if (!$att[0].files || !$att[0].files.length) {
+                errors.push("L'attestation de retraite est obligatoire.");
+              }
+            } else {
+              var $fp = $('input[name="fiche_paie[]"]').first();
+              if (!$fp[0].files || !$fp[0].files.length) {
+                errors.push('Au moins une fiche de paie est obligatoire.');
+              }
+            }
           }
         }
         break;

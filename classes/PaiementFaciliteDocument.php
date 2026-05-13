@@ -28,18 +28,24 @@ class PaiementFaciliteDocument extends ObjectModel
         ],
     ];
 
-    // Document type constants
-    const TYPE_FICHE_PAIE       = 'fiche_paie';
-    const TYPE_ATTESTATION      = 'attestation_retraite';
-    const TYPE_CIN_RECTO        = 'cin_recto';
-    const TYPE_CIN_VERSO        = 'cin_verso';
-    const TYPE_RIB              = 'rib';
-    const TYPE_RELEVE_BANCAIRE  = 'releve_bancaire';
-    const TYPE_FACTURE_STEG     = 'facture_steg';
+    // Document type constants — individual
+    const TYPE_FICHE_PAIE          = 'fiche_paie';
+    const TYPE_ATTESTATION         = 'attestation_retraite';
+    // Document type constants — company
+    const TYPE_REGISTRE_COMMERCE   = 'registre_commerce';
+    const TYPE_STATUTS             = 'statuts_societe';
+    // Document type constants — common
+    const TYPE_CIN_RECTO           = 'cin_recto';
+    const TYPE_CIN_VERSO           = 'cin_verso';
+    const TYPE_RIB                 = 'rib';
+    const TYPE_RELEVE_BANCAIRE     = 'releve_bancaire';
+    const TYPE_FACTURE_STEG        = 'facture_steg';
 
     public static $allowed_types = [
         self::TYPE_FICHE_PAIE,
         self::TYPE_ATTESTATION,
+        self::TYPE_REGISTRE_COMMERCE,
+        self::TYPE_STATUTS,
         self::TYPE_CIN_RECTO,
         self::TYPE_CIN_VERSO,
         self::TYPE_RIB,

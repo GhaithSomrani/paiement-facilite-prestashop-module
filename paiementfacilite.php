@@ -45,6 +45,10 @@ class PaiementFacilite extends PaymentModule
             return false;
         }
 
+        if (!$this->installOrderStates()) {
+            return false;
+        }
+
         $hooks = [
             'paymentOptions',
             'paymentReturn',
@@ -58,7 +62,6 @@ class PaiementFacilite extends PaymentModule
             }
         }
 
-
         return true;
     }
 
@@ -70,6 +73,60 @@ class PaiementFacilite extends PaymentModule
 
         // $this->uninstallSql();
         $this->uninstallTab();
+
+        return true;
+    }
+
+    private function installOrderStates()
+    {
+        $states = [
+            'PF_OS_PENDING' => [
+                'name'    => 'En attente de validation facilité',
+                'color'   => '#FF8C00',
+                'paid'    => false,
+                'invoice' => false,
+                'logable' => false,
+                'send_email' => false,
+            ],
+            'PF_OS_APPROVED' => [
+                'name'    => 'Paiement facilité approuvé',
+                'color'   => '#28a745',
+                'paid'    => true,
+                'invoice' => true,
+                'logable' => true,
+                'send_email' => false,
+            ],
+            'PF_OS_REJECTED' => [
+                'name'    => 'Paiement facilité rejeté',
+                'color'   => '#dc3545',
+                'paid'    => false,
+                'invoice' => false,
+                'logable' => false,
+                'send_email' => false,
+            ],
+        ];
+
+        foreach ($states as $key => $data) {
+            // Skip if already exists
+            if ((int) Configuration::get($key) > 0) {
+                continue;
+            }
+
+            $os = new OrderState();
+            $os->color      = $data['color'];
+            $os->paid       = $data['paid'];
+            $os->invoice    = $data['invoice'];
+            $os->logable    = $data['logable'];
+            $os->send_email = $data['send_email'];
+            $os->module_name = $this->name;
+            foreach (Language::getLanguages() as $lang) {
+                $os->name[$lang['id_lang']] = $data['name'];
+            }
+            if (!$os->add()) {
+                return false;
+            }
+            Configuration::updateValue($key, (int) $os->id);
+        }
 
         return true;
     }

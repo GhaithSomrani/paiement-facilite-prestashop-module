@@ -274,8 +274,8 @@
     <section class="pf-section pf-step-panel" data-step="6" id="pf-docs-step">
       <h2 class="pf-section-title">{l s='Documents requis' mod='paiementfacilite'}</h2>
 
-      {* Fiches de paie / Attestation retraite *}
-      <div class="pf-doc pf-doc-group" id="pf-doc-salarie-block">
+      {* ── Individual docs (salarié / retraité) ── *}
+      <div id="pf-doc-salarie-block" class="pf-doc pf-doc-group">
         <p class="pf-doc-title">{l s='Trois dernières fiches de paie' mod='paiementfacilite'} *</p>
         <p class="pf-doc-hint">{l s='Avec cachet et signature de l\'employeur (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
         <div class="pf-file-row" id="pf-fiche-rows">
@@ -288,7 +288,7 @@
         <button type="button" class="pf-add-more" data-target="pf-fiche-rows" data-max="3">+ {l s='Ajouter un autre fichier' mod='paiementfacilite'}</button>
       </div>
 
-      <div class="pf-doc pf-doc-group" id="pf-doc-retraite-block" style="display:none;">
+      <div id="pf-doc-retraite-block" class="pf-doc pf-doc-group" style="display:none;">
         <p class="pf-doc-title">{l s='Attestation retraite CNSS/CNRPS' mod='paiementfacilite'} *</p>
         <p class="pf-doc-hint">{l s='PNG, JPEG ou PDF — max 5 MB' mod='paiementfacilite'}</p>
         <div class="pf-file-row">
@@ -300,9 +300,36 @@
         </div>
       </div>
 
-      {* CIN *}
-      <div class="pf-doc pf-doc-group">
-        <p class="pf-doc-title">{l s='Carte d\'identité nationale (CIN)' mod='paiementfacilite'} *</p>
+      {* ── Company docs (société) ── *}
+      <div id="pf-doc-societe-block" class="pf-doc-group" style="display:none;">
+        <div class="pf-doc">
+          <p class="pf-doc-title">{l s='Registre de commerce / Patente' mod='paiementfacilite'} *</p>
+          <p class="pf-doc-hint">{l s='PNG, JPEG ou PDF — max 5 MB' mod='paiementfacilite'}</p>
+          <div class="pf-file-row">
+            <label class="pf-file-pick">
+              <input type="file" name="registre_commerce" accept=".jpg,.jpeg,.png,.pdf">
+              <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
+              <span class="pf-file-name"></span>
+            </label>
+          </div>
+        </div>
+        <div class="pf-doc">
+          <p class="pf-doc-title">{l s='Statuts de la société' mod='paiementfacilite'} *</p>
+          <p class="pf-doc-hint">{l s='PNG, JPEG ou PDF — max 5 MB' mod='paiementfacilite'}</p>
+          <div class="pf-file-row" id="pf-statuts-rows">
+            <label class="pf-file-pick">
+              <input type="file" name="statuts_societe[]" accept=".jpg,.jpeg,.png,.pdf">
+              <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
+              <span class="pf-file-name"></span>
+            </label>
+          </div>
+          <button type="button" class="pf-add-more" data-target="pf-statuts-rows" data-max="5">+ {l s='Ajouter une page' mod='paiementfacilite'}</button>
+        </div>
+      </div>
+
+      {* ── Common docs (individual & company) ── *}
+      <div class="pf-doc pf-doc-group" id="pf-doc-cin">
+        <p class="pf-doc-title" id="pf-cin-doc-title">{l s='Carte d\'identité nationale (CIN)' mod='paiementfacilite'} *</p>
         <p class="pf-doc-hint">{l s='Recto et verso (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
         <div class="pf-file-row two-cols">
           <label class="pf-file-pick">
@@ -320,7 +347,6 @@
         </div>
       </div>
 
-      {* RIB *}
       <div class="pf-doc pf-doc-group">
         <p class="pf-doc-title">{l s='Identité Bancaire (RIB)' mod='paiementfacilite'} *</p>
         <p class="pf-doc-hint">{l s='Avec cachet de la banque (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
@@ -333,7 +359,6 @@
         </div>
       </div>
 
-      {* Relevés bancaires *}
       <div class="pf-doc pf-doc-group">
         <p class="pf-doc-title">{l s='Trois derniers relevés bancaires' mod='paiementfacilite'} *</p>
         <p class="pf-doc-hint">{l s='Avec cachet de la banque (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
@@ -347,7 +372,6 @@
         <button type="button" class="pf-add-more" data-target="pf-releve-rows" data-max="3">+ {l s='Ajouter un autre fichier' mod='paiementfacilite'}</button>
       </div>
 
-      {* Facture STEG *}
       <div class="pf-doc pf-doc-group">
         <p class="pf-doc-title">{l s='Dernière facture STEG ou SONEDE' mod='paiementfacilite'} *</p>
         <p class="pf-doc-hint">{l s='PNG, JPEG ou PDF — max 5 MB' mod='paiementfacilite'}</p>

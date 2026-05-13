@@ -258,16 +258,22 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             return;
         }
 
-        // --- Link order ---
+        // --- Validate order from cart (if coming from checkout) ---
+        $cart = $this->context->cart;
+        if ($cart && $cart->id && $cart->nbProducts() > 0) {
+            $id_order = $this->validateCartAsOrder($request->id, $cart);
+        }
+
+        // --- Link order to request ---
         $request->linkOrder($id_order ?: null);
 
         // --- Process document uploads ---
         if (!$belongs_to_partner) {
-            $this->processDocumentUploads($request->id);
+            $this->processDocumentUploads($request->id, $is_company, $is_retired);
         }
 
         // --- Send emails ---
-        $this->module->sendConfirmationEmail($request->id);
+        // $this->module->sendConfirmationEmail($request->id);
 
         // --- Redirect to confirmation ---
         Tools::redirect(
@@ -280,41 +286,95 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         );
     }
 
-    private function processDocumentUploads($id_request)
+    /**
+     * Call validateOrder() to convert the active cart into a PS order
+     * with the "pending" state, and embed the request reference.
+     *
+     * @return int Created order ID, or 0 on failure.
+     */
+    private function validateCartAsOrder($id_request, Cart $cart)
     {
-        $doc_types_single = [
+        $id_pending_state = (int) Configuration::get('PF_OS_PENDING');
+        if (!$id_pending_state) {
+            // Fallback to PS "Awaiting bank wire payment" if our state isn't installed
+            $id_pending_state = (int) Configuration::get('PS_OS_BANKWIRE');
+        }
+
+        $amount  = (float) $cart->getOrderTotal(true, Cart::BOTH);
+        $message = $this->module->l('Demande de paiement par facilité #') . $id_request;
+
+        try {
+            $this->module->validateOrder(
+                (int) $cart->id,
+                $id_pending_state,
+                $amount,
+                $this->module->displayName,
+                $message,
+                ['transaction_id' => 'PF-' . $id_request],
+                null,
+                false,
+                $this->context->customer->secure_key
+            );
+            return (int) $this->module->currentOrder;
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog(
+                'PaiementFacilite: validateOrder failed for request #' . $id_request . ' — ' . $e->getMessage(),
+                3, null, 'PaiementFaciliteRequest', $id_request
+            );
+            return 0;
+        }
+    }
+
+    private function processDocumentUploads($id_request, $is_company, $is_retired)
+    {
+        // Common single-file uploads for both types
+        $single_common = [
             PaiementFaciliteDocument::TYPE_CIN_RECTO,
             PaiementFaciliteDocument::TYPE_CIN_VERSO,
             PaiementFaciliteDocument::TYPE_RIB,
             PaiementFaciliteDocument::TYPE_FACTURE_STEG,
-            PaiementFaciliteDocument::TYPE_ATTESTATION,
-        ];
-        $doc_types_multi = [
-            PaiementFaciliteDocument::TYPE_FICHE_PAIE,
-            PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE,
         ];
 
-        foreach ($doc_types_single as $type) {
+        // Type-specific single-file uploads
+        $single_specific = [];
+        if ($is_company) {
+            $single_specific[] = PaiementFaciliteDocument::TYPE_REGISTRE_COMMERCE;
+        } else {
+            if ($is_retired) {
+                $single_specific[] = PaiementFaciliteDocument::TYPE_ATTESTATION;
+            }
+        }
+
+        foreach (array_merge($single_common, $single_specific) as $type) {
             if (!empty($_FILES[$type]['name']) && $_FILES[$type]['error'] === UPLOAD_ERR_OK) {
                 PaiementFaciliteDocument::saveUpload($id_request, $type, $_FILES[$type]);
             }
         }
 
-        foreach ($doc_types_multi as $type) {
-            if (!empty($_FILES[$type]) && is_array($_FILES[$type]['name'])) {
-                $count = count($_FILES[$type]['name']);
-                $max   = ($type === PaiementFaciliteDocument::TYPE_FICHE_PAIE) ? 3 : 3;
-                for ($i = 0; $i < min($count, $max); $i++) {
-                    if ($_FILES[$type]['error'][$i] === UPLOAD_ERR_OK) {
-                        $single = [
-                            'name'     => $_FILES[$type]['name'][$i],
-                            'type'     => $_FILES[$type]['type'][$i],
-                            'tmp_name' => $_FILES[$type]['tmp_name'][$i],
-                            'error'    => $_FILES[$type]['error'][$i],
-                            'size'     => $_FILES[$type]['size'][$i],
-                        ];
-                        PaiementFaciliteDocument::saveUpload($id_request, $type, $single);
-                    }
+        // Multi-file uploads
+        $multi = [PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE => 3];
+        if ($is_company) {
+            $multi[PaiementFaciliteDocument::TYPE_STATUTS] = 5;
+        } else {
+            if (!$is_retired) {
+                $multi[PaiementFaciliteDocument::TYPE_FICHE_PAIE] = 3;
+            }
+        }
+
+        foreach ($multi as $type => $max) {
+            if (empty($_FILES[$type]) || !is_array($_FILES[$type]['name'])) {
+                continue;
+            }
+            $count = count($_FILES[$type]['name']);
+            for ($i = 0; $i < min($count, $max); $i++) {
+                if ($_FILES[$type]['error'][$i] === UPLOAD_ERR_OK) {
+                    PaiementFaciliteDocument::saveUpload($id_request, $type, [
+                        'name'     => $_FILES[$type]['name'][$i],
+                        'type'     => $_FILES[$type]['type'][$i],
+                        'tmp_name' => $_FILES[$type]['tmp_name'][$i],
+                        'error'    => $_FILES[$type]['error'][$i],
+                        'size'     => $_FILES[$type]['size'][$i],
+                    ]);
                 }
             }
         }

@@ -202,13 +202,15 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
     private function getDocLabels()
     {
         return [
-            PaiementFaciliteDocument::TYPE_FICHE_PAIE      => $this->l('Fiche(s) de paie'),
-            PaiementFaciliteDocument::TYPE_ATTESTATION     => $this->l('Attestation retraite'),
-            PaiementFaciliteDocument::TYPE_CIN_RECTO       => $this->l('CIN Recto'),
-            PaiementFaciliteDocument::TYPE_CIN_VERSO       => $this->l('CIN Verso'),
-            PaiementFaciliteDocument::TYPE_RIB             => $this->l('RIB / Identité bancaire'),
-            PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE => $this->l('Relevé(s) bancaire(s)'),
-            PaiementFaciliteDocument::TYPE_FACTURE_STEG    => $this->l('Facture STEG / SONEDE'),
+            PaiementFaciliteDocument::TYPE_FICHE_PAIE          => $this->l('Fiche(s) de paie'),
+            PaiementFaciliteDocument::TYPE_ATTESTATION         => $this->l('Attestation retraite'),
+            PaiementFaciliteDocument::TYPE_REGISTRE_COMMERCE   => $this->l('Registre de commerce / Patente'),
+            PaiementFaciliteDocument::TYPE_STATUTS             => $this->l('Statuts de la société'),
+            PaiementFaciliteDocument::TYPE_CIN_RECTO           => $this->l('CIN Recto'),
+            PaiementFaciliteDocument::TYPE_CIN_VERSO           => $this->l('CIN Verso'),
+            PaiementFaciliteDocument::TYPE_RIB                 => $this->l('RIB / Identité bancaire'),
+            PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE     => $this->l('Relevé(s) bancaire(s)'),
+            PaiementFaciliteDocument::TYPE_FACTURE_STEG        => $this->l('Facture STEG / SONEDE'),
         ];
     }
 
@@ -225,6 +227,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             return;
         }
         if ($request->updateStatus('approved')) {
+            $this->updateLinkedOrderState($request, 'approved');
             $this->sendStatusEmail($request, 'approved');
             $this->confirmations[] = $this->l('Demande approuvée.');
         } else {
@@ -241,6 +244,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             return;
         }
         if ($request->updateStatus('rejected')) {
+            $this->updateLinkedOrderState($request, 'rejected');
             $this->sendStatusEmail($request, 'rejected');
             $this->confirmations[] = $this->l('Demande rejetée.');
         } else {
@@ -254,6 +258,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $request = new PaiementFaciliteRequest((int) $id);
             if (Validate::isLoadedObject($request)) {
                 $request->updateStatus('approved');
+                $this->updateLinkedOrderState($request, 'approved');
                 $this->sendStatusEmail($request, 'approved');
             }
         }
@@ -266,10 +271,53 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $request = new PaiementFaciliteRequest((int) $id);
             if (Validate::isLoadedObject($request)) {
                 $request->updateStatus('rejected');
+                $this->updateLinkedOrderState($request, 'rejected');
                 $this->sendStatusEmail($request, 'rejected');
             }
         }
         $this->confirmations[] = $this->l('Demandes rejetées.');
+    }
+
+    /**
+     * Move the linked PS order to the approved or rejected order state.
+     */
+    private function updateLinkedOrderState(PaiementFaciliteRequest $request, $decision)
+    {
+        $linked = $request->getLinkedOrder();
+        if (!$linked || !(int) $linked['id_order']) {
+            return;
+        }
+        $id_order = (int) $linked['id_order'];
+        $order    = new Order($id_order);
+        if (!Validate::isLoadedObject($order)) {
+            return;
+        }
+
+        $config_key = ($decision === 'approved') ? 'PF_OS_APPROVED' : 'PF_OS_REJECTED';
+        $id_state   = (int) Configuration::get($config_key);
+        if (!$id_state) {
+            return;
+        }
+
+        $history              = new OrderHistory();
+        $history->id_order    = $id_order;
+        $history->id_employee = isset($this->context->employee->id)
+            ? (int) $this->context->employee->id
+            : 0;
+        $history->changeIdOrderState($id_state, $order);
+
+        $message = ($decision === 'approved')
+            ? $this->l('Demande de facilité #') . $request->id . ' ' . $this->l('approuvée.')
+            : $this->l('Demande de facilité #') . $request->id . ' ' . $this->l('rejetée.');
+
+        $history->addWithemail(true, ['employee_firstname' => '', 'employee_lastname' => '']);
+
+        // Add an order message visible in back-office
+        $msg              = new Message();
+        $msg->id_order    = $id_order;
+        $msg->message     = $message;
+        $msg->private     = true;
+        $msg->add();
     }
 
     private function sendStatusEmail(PaiementFaciliteRequest $request, $status)
