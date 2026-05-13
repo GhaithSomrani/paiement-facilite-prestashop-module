@@ -69,11 +69,13 @@
 
   function toggleCompanyFields() {
     if (PF.isCompany) {
+      $('#pf-personal-fields').hide();
       $('#pf-company-fields').show();
-      $('#pf-company-fields input').prop('required', true);
+      $('#pf-step4-title').text('Informations de la société');
     } else {
+      $('#pf-personal-fields').show();
       $('#pf-company-fields').hide();
-      $('#pf-company-fields input').prop('required', false);
+      $('#pf-step4-title').text('Informations personnelles');
     }
   }
 
@@ -96,7 +98,18 @@
       }
       $('#pf_belongs_to_partner').val(PF.belongsToPartner ? 1 : 0);
       updateDocsStep();
+      updatePartnerNavigation();
     });
+  }
+
+  function updatePartnerNavigation() {
+    if (PF.belongsToPartner) {
+      $('#pf-step5-next').hide();
+      $('#pf-step5-submit').show();
+    } else {
+      $('#pf-step5-next').show();
+      $('#pf-step5-submit').hide();
+    }
   }
 
   function updateDocsStep() {
@@ -151,24 +164,32 @@
     }
   }
 
-  /* ── Step 5 — credit slider ── */
+  /* ── Step 5 — credit slider + month selector ── */
   function initCreditSlider() {
     var $slider  = $('#pf-credit-slider');
     var $display = $('#pf-amount-display');
     var $tranche = $('#pf-tranche');
     var $mensual = $('#pf-mensualite');
     var $mDisp   = $('#pf-mensualite-display');
+    var $moisDisp = $('#pf-mois-display');
+
+    function getNbMois() {
+      var val = parseInt($('input[name=nb_mois]:checked').val(), 10);
+      return val > 0 ? val : 12;
+    }
 
     function recalc() {
       var amount  = parseFloat($slider.val()) || 0;
       var minTr   = Math.ceil(amount * 0.20 * 100) / 100;
       var tranche = parseFloat($tranche.val()) || 0;
+      var nbMois  = getNbMois();
 
       // Update slider visual fill
       var pct = ((amount - $slider.attr('min')) / ($slider.attr('max') - $slider.attr('min'))) * 100;
       $slider.css('--fill', pct.toFixed(1) + '%');
 
       $display.text(amount.toFixed(0));
+      $moisDisp.text(nbMois);
 
       $tranche.attr('min', minTr.toFixed(2));
       if (tranche < minTr || !$tranche.data('user-edited')) {
@@ -176,7 +197,7 @@
         tranche = minTr;
       }
 
-      var mensualite = (amount - tranche) / 12;
+      var mensualite = (amount - tranche) / nbMois;
       mensualite = mensualite > 0 ? Math.round(mensualite * 100) / 100 : 0;
       $mensual.val(mensualite.toFixed(2));
       $mDisp.text(mensualite.toFixed(2));
@@ -185,6 +206,13 @@
     $slider.on('input change', recalc);
     $tranche.on('input', function () {
       $(this).data('user-edited', true);
+      recalc();
+    });
+    // Month toggle buttons
+    $('#pf-mois-row').on('click', '.pf-toggle-btn', function () {
+      $('#pf-mois-row .pf-toggle-btn').removeClass('is-selected');
+      $(this).addClass('is-selected');
+      $(this).find('input[type=radio]').prop('checked', true);
       recalc();
     });
 
@@ -245,10 +273,20 @@
   function initNavButtons() {
     $(document).on('click', '.pf-next-btn', function () {
       if (!validateStep(PF.currentStep)) return;
-      goTo(PF.currentStep + 1);
+      // Partner org: jump from step 2 straight to step 5
+      if (PF.belongsToPartner && PF.currentStep === 2) {
+        goTo(5);
+      } else {
+        goTo(PF.currentStep + 1);
+      }
     });
     $(document).on('click', '.pf-prev-btn', function () {
-      goTo(PF.currentStep - 1);
+      // Partner org: jump back from step 5 straight to step 2
+      if (PF.belongsToPartner && PF.currentStep === 5) {
+        goTo(2);
+      } else {
+        goTo(PF.currentStep - 1);
+      }
     });
   }
 
@@ -299,15 +337,15 @@
         break;
 
       case 4:
-        if (!$('#pf-date-naissance').val())    errors.push('La date de naissance est obligatoire.');
-        if (!$('#pf-fonction').val().trim())   errors.push('La fonction est obligatoire.');
-        if (!$('#pf-cin').val().trim())        errors.push('Le numéro de CIN est obligatoire.');
         if (PF.isCompany) {
-          if (!$('#pf-raison-sociale').val().trim())    errors.push('La raison sociale est obligatoire.');
-          if (!$('#pf-matricule-fiscal').val().trim())  errors.push('Le matricule fiscal est obligatoire.');
-          if (!$('#pf-representant-legal').val().trim())errors.push('Le représentant légal est obligatoire.');
-          if (!$('#pf-cin-gerant').val().trim())        errors.push('Le CIN du gérant est obligatoire.');
-          if (!$('#pf-date-naissance-gerant').val())    errors.push('La date de naissance du gérant est obligatoire.');
+          if (!$('#pf-raison-sociale').val().trim())     errors.push('La raison sociale est obligatoire.');
+          if (!$('#pf-matricule-fiscal').val().trim())   errors.push('Le matricule fiscal est obligatoire.');
+          if (!$('#pf-representant-legal').val().trim()) errors.push('Le représentant légal est obligatoire.');
+          if (!$('#pf-cin-gerant').val().trim())         errors.push('Le CIN du gérant est obligatoire.');
+        } else {
+          if (!$('#pf-date-naissance').val())  errors.push('La date de naissance est obligatoire.');
+          if (!$('#pf-cin').val().trim())      errors.push('Le numéro de CIN est obligatoire.');
+          if (!$('#pf-fonction').val().trim()) errors.push('La fonction / profession est obligatoire.');
         }
         break;
 

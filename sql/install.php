@@ -41,6 +41,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_requests` (
     `credit_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
     `premiere_tranche` decimal(10,2) NOT NULL DEFAULT 0.00,
     `mensualite` decimal(10,2) NOT NULL DEFAULT 0.00,
+    `nb_mois` tinyint(3) unsigned NOT NULL DEFAULT 6,
     `commentaire` text DEFAULT NULL,
     `status` enum(\'pending\',\'approved\',\'rejected\') NOT NULL DEFAULT \'pending\',
     `date_add` datetime NOT NULL,

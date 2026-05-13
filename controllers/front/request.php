@@ -122,9 +122,14 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
 
         // Validate address belongs to customer
         $customer_addresses = $this->context->customer->getAddresses($id_lang);
-        $address_ids = array_column($customer_addresses, 'id_address');
+        $address_ids        = array_column($customer_addresses, 'id_address');
         if (!in_array($id_address, $address_ids)) {
-            $errors[] = $this->module->l('Adresse invalide.');
+            // Partner org members skipped steps 3/4 — auto-assign their first address
+            if ($belongs_to_partner && !empty($address_ids)) {
+                $id_address = (int) $address_ids[0];
+            } else {
+                $errors[] = $this->module->l('Adresse invalide.');
+            }
         }
 
         // --- Organisation ---
@@ -151,19 +156,21 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $id_organisation = null;
         }
 
-        // --- Personal info ---
-        $date_naissance = Tools::getValue('date_naissance');
-        $fonction       = Tools::getValue('fonction');
-        $cin            = Tools::getValue('cin');
+        // --- Personal info (individuals only, non-partner) ---
+        $date_naissance = ($is_company || $belongs_to_partner) ? null : Tools::getValue('date_naissance');
+        $fonction       = ($is_company || $belongs_to_partner) ? null : Tools::getValue('fonction');
+        $cin            = ($is_company || $belongs_to_partner) ? null : Tools::getValue('cin');
 
-        if (empty($date_naissance) || !Validate::isDate($date_naissance)) {
-            $errors[] = $this->module->l('Date de naissance invalide.');
-        }
-        if (empty($fonction)) {
-            $errors[] = $this->module->l('La fonction est obligatoire.');
-        }
-        if (empty($cin)) {
-            $errors[] = $this->module->l('Le numéro de CIN est obligatoire.');
+        if (!$is_company && !$belongs_to_partner) {
+            if (empty($date_naissance) || !Validate::isDate($date_naissance)) {
+                $errors[] = $this->module->l('Date de naissance invalide.');
+            }
+            if (empty($fonction)) {
+                $errors[] = $this->module->l('La fonction est obligatoire.');
+            }
+            if (empty($cin)) {
+                $errors[] = $this->module->l('Le numéro de CIN est obligatoire.');
+            }
         }
 
         // --- Société fields ---
@@ -173,21 +180,17 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $representant_legal    = null;
         $cin_gerant            = null;
 
-        if ($is_company) {
-            $raison_sociale        = Tools::getValue('raison_sociale');
-            $matricule_fiscal      = Tools::getValue('matricule_fiscal');
-            $date_naissance_gerant = Tools::getValue('date_naissance_gerant');
-            $representant_legal    = Tools::getValue('representant_legal');
-            $cin_gerant            = Tools::getValue('cin_gerant');
+        if ($is_company && !$belongs_to_partner) {
+            $raison_sociale     = Tools::getValue('raison_sociale');
+            $matricule_fiscal   = Tools::getValue('matricule_fiscal');
+            $representant_legal = Tools::getValue('representant_legal');
+            $cin_gerant         = Tools::getValue('cin_gerant');
 
             if (empty($raison_sociale)) {
                 $errors[] = $this->module->l('La raison sociale est obligatoire.');
             }
             if (empty($matricule_fiscal)) {
                 $errors[] = $this->module->l('Le matricule fiscal est obligatoire.');
-            }
-            if (empty($date_naissance_gerant) || !Validate::isDate($date_naissance_gerant)) {
-                $errors[] = $this->module->l('Date de naissance du gérant invalide.');
             }
             if (empty($representant_legal)) {
                 $errors[] = $this->module->l('Le représentant légal est obligatoire.');
@@ -200,7 +203,12 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // --- Credit details ---
         $credit_amount    = (float) Tools::getValue('credit_amount');
         $premiere_tranche = (float) Tools::getValue('premiere_tranche');
+        $nb_mois          = (int) Tools::getValue('nb_mois') ?: 12;
         $commentaire      = Tools::getValue('commentaire');
+
+        if ($nb_mois < 2 || $nb_mois > 12) {
+            $nb_mois = 6;
+        }
 
         $min_amount = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
         $max_amount = (float) (Configuration::get('PF_MAX_AMOUNT') ?: 3000);
@@ -215,7 +223,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         $mensualite = ($credit_amount > 0 && $premiere_tranche < $credit_amount)
-            ? round(($credit_amount - $premiere_tranche) / 12, 2)
+            ? round(($credit_amount - $premiere_tranche) / $nb_mois, 2)
             : 0;
 
         // --- Documents (only if not partner org) ---
@@ -242,14 +250,14 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $request->date_naissance        = pSQL($date_naissance);
         $request->fonction              = pSQL($fonction);
         $request->cin                   = pSQL($cin);
-        $request->raison_sociale        = $raison_sociale ? pSQL($raison_sociale) : null;
-        $request->matricule_fiscal      = $matricule_fiscal ? pSQL($matricule_fiscal) : null;
-        $request->date_naissance_gerant = $date_naissance_gerant ? pSQL($date_naissance_gerant) : null;
-        $request->representant_legal    = $representant_legal ? pSQL($representant_legal) : null;
-        $request->cin_gerant            = $cin_gerant ? pSQL($cin_gerant) : null;
-        $request->credit_amount         = $credit_amount;
-        $request->premiere_tranche      = $premiere_tranche;
-        $request->mensualite            = $mensualite;
+        $request->raison_sociale     = $raison_sociale ? pSQL($raison_sociale) : null;
+        $request->matricule_fiscal   = $matricule_fiscal ? pSQL($matricule_fiscal) : null;
+        $request->representant_legal = $representant_legal ? pSQL($representant_legal) : null;
+        $request->cin_gerant         = $cin_gerant ? pSQL($cin_gerant) : null;
+        $request->credit_amount      = $credit_amount;
+        $request->premiere_tranche   = $premiere_tranche;
+        $request->mensualite         = $mensualite;
+        $request->nb_mois            = $nb_mois;
         $request->commentaire           = pSQL($commentaire);
         $request->status                = 'pending';
 

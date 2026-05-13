@@ -167,26 +167,29 @@
        STEP 4 — INFORMATIONS PERSONNELLES
        ====================================================== *}
     <section class="pf-section pf-step-panel" data-step="4">
-      <h2 class="pf-section-title">{l s='Informations personnelles' mod='paiementfacilite'}</h2>
+      <h2 class="pf-section-title" id="pf-step4-title">{l s='Informations personnelles' mod='paiementfacilite'}</h2>
 
-      <div class="pf-grid">
-        <div class="pf-field">
-          <label for="pf-date-naissance">{l s='Date de naissance' mod='paiementfacilite'} *</label>
-          <input type="date" name="date_naissance" id="pf-date-naissance"
-                 required value="{$pf_birthday|escape:'html'}"
-                 max="{$smarty.now|date_format:'%Y-%m-%d'}">
-        </div>
-        <div class="pf-field">
-          <label for="pf-cin">{l s='Numéro de CIN' mod='paiementfacilite'} *</label>
-          <input type="text" name="cin" id="pf-cin" required maxlength="32" placeholder="00000000">
-        </div>
-        <div class="pf-field pf-span-2">
-          <label for="pf-fonction">{l s='Fonction / Profession' mod='paiementfacilite'} *</label>
-          <input type="text" name="fonction" id="pf-fonction" required maxlength="128">
+      {* Personal fields — hidden for companies *}
+      <div id="pf-personal-fields">
+        <div class="pf-grid">
+          <div class="pf-field">
+            <label for="pf-date-naissance">{l s='Date de naissance' mod='paiementfacilite'} *</label>
+            <input type="date" name="date_naissance" id="pf-date-naissance"
+                   value="{$pf_birthday|escape:'html'}"
+                   max="{$smarty.now|date_format:'%Y-%m-%d'}">
+          </div>
+          <div class="pf-field">
+            <label for="pf-cin">{l s='Numéro de CIN' mod='paiementfacilite'} *</label>
+            <input type="text" name="cin" id="pf-cin" maxlength="32" placeholder="00000000">
+          </div>
+          <div class="pf-field pf-span-2">
+            <label for="pf-fonction">{l s='Fonction / Profession' mod='paiementfacilite'} *</label>
+            <input type="text" name="fonction" id="pf-fonction" maxlength="128">
+          </div>
         </div>
       </div>
 
-      {* Société fields *}
+      {* Company fields — hidden for individuals *}
       <div id="pf-company-fields" style="display:none;">
         <h3 class="pf-section-title" style="font-size:12px;margin-top:20px;">{l s='Informations de la société' mod='paiementfacilite'}</h3>
         <div class="pf-grid">
@@ -205,10 +208,6 @@
           <div class="pf-field">
             <label for="pf-cin-gerant">{l s='CIN du gérant' mod='paiementfacilite'} *</label>
             <input type="text" name="cin_gerant" id="pf-cin-gerant" maxlength="32">
-          </div>
-          <div class="pf-field pf-span-2">
-            <label for="pf-date-naissance-gerant">{l s='Date de naissance du gérant' mod='paiementfacilite'} *</label>
-            <input type="date" name="date_naissance_gerant" id="pf-date-naissance-gerant">
           </div>
         </div>
       </div>
@@ -245,13 +244,22 @@
         <span>{$pf_max_amount|intval} DT</span>
       </div>
 
+      <p class="pf-slider-label" style="margin-top:24px;">{l s='Nombre de mensualités' mod='paiementfacilite'} *</p>
+      <div class="pf-toggle-row pf-toggle-row--wrap" id="pf-mois-row">
+        {for $m = 2 to 12}
+          <label class="pf-toggle-btn{if $m == 6} is-selected{/if}" data-mois="{$m}">
+            <input type="radio" name="nb_mois" value="{$m}"{if $m == 6} checked{/if}> {$m}
+          </label>
+        {/for}
+      </div>
+
       <div class="pf-credit-boxes">
         <div class="pf-credit-box">
           <div class="pf-credit-box-label">{l s='1ère tranche (min 20%)' mod='paiementfacilite'}</div>
           <input type="number" name="premiere_tranche" id="pf-tranche" step="0.01" required placeholder="0.00">
         </div>
         <div class="pf-credit-box">
-          <div class="pf-credit-box-label">{l s='Mensualité sur 12 mois' mod='paiementfacilite'}</div>
+          <div class="pf-credit-box-label">{l s='Mensualité' mod='paiementfacilite'} (<span id="pf-mois-display">6</span> {l s='mois' mod='paiementfacilite'})</div>
           <div class="pf-credit-box-value"><span id="pf-mensualite-display">—</span> DT</div>
           <input type="hidden" name="mensualite" id="pf-mensualite" value="0">
         </div>
@@ -264,7 +272,10 @@
 
       <div class="pf-nav">
         <button type="button" class="pf-btn-prev pf-prev-btn">← {l s='Précédent' mod='paiementfacilite'}</button>
-        <button type="button" class="pf-btn-next pf-next-btn" data-validates-step="5">{l s='Suivant' mod='paiementfacilite'} →</button>
+        <button type="button" class="pf-btn-next pf-next-btn" id="pf-step5-next">{l s='Suivant' mod='paiementfacilite'} →</button>
+        <button type="submit" class="pf-submit-btn" id="pf-step5-submit" style="display:none;">
+          {l s='Je dépose mon dossier' mod='paiementfacilite'}
+        </button>
       </div>
     </section>
 
