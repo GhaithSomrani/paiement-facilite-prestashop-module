@@ -1,12 +1,13 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <module>
     <name>paiementfacilite</name>
-    <displayName><![CDATA[Paiement par facilité / traite]]></displayName>
-    <version><![CDATA[1.0.0]]></version>
-    <description><![CDATA[Module de paiement par facilité ou traite pour clients salariés et sociétés]]></description>
+    <displayName><![CDATA[Paiement par facilit&eacute; / traite]]></displayName>
+    <version><![CDATA[1.1.0]]></version>
+    <description><![CDATA[Acceptez les demandes de paiement par facilit&eacute; ou traite pour vos clients.]]></description>
     <author><![CDATA[Ghaith Somrani]]></author>
     <tab><![CDATA[payments_gateways]]></tab>
+	<confirmUninstall><![CDATA[Êtes-vous sûr de vouloir désinstaller ce module ?]]></confirmUninstall>
     <is_configurable>1</is_configurable>
     <need_instance>1</need_instance>
-    <limited_countries></limited_countries>
+	<limited_countries></limited_countries>
 </module>

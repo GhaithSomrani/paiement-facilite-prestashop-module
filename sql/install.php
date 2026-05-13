@@ -8,7 +8,12 @@ $sql = [];
 // Partner organisations
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_organisations` (
     `id_organisation` int(10) unsigned NOT NULL AUTO_INCREMENT,
-    `name` varchar(128) NOT NULL,
+    `name`          varchar(128) NOT NULL,
+    `contact_name`  varchar(128) DEFAULT NULL,
+    `contact_email` varchar(128) DEFAULT NULL,
+    `contact_phone` varchar(32)  DEFAULT NULL,
+    `address`       varchar(255) DEFAULT NULL,
+    `logo`          varchar(255) DEFAULT NULL,
     `active` tinyint(1) unsigned NOT NULL DEFAULT 1,
     `date_add` datetime NOT NULL,
     `date_upd` datetime NOT NULL,

@@ -1,0 +1,15 @@
+# Uploaded files
+uploads/
+
+# PrestaShop cache
+config/xml/
+*.bak
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp

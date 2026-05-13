@@ -18,7 +18,7 @@ class PaiementFacilite extends PaymentModule
     {
         $this->name = 'paiementfacilite';
         $this->tab = 'payments_gateways';
-        $this->version = '1.0.0';
+        $this->version = '1.1.0';
         $this->author = 'Ghaith Somrani';
         $this->need_instance = 1;
         $this->ps_versions_compliancy = array('min' => '1.7', 'max' => '8.0');
@@ -106,28 +106,60 @@ class PaiementFacilite extends PaymentModule
 
     private function installTab()
     {
-        $tab = new Tab();
-        $tab->active = 1;
-        $tab->class_name = 'AdminPaiementFaciliteRequests';
-        $tab->module = $this->name;
-        $tab->id_parent = (int) Tab::getIdFromClassName('AdminParentPayment');
-        if (!$tab->id_parent) {
-            $tab->id_parent = (int) Tab::getIdFromClassName('AdminModules');
+        $id_parent_root = (int) Tab::getIdFromClassName('AdminParentPayment');
+        if (!$id_parent_root) {
+            $id_parent_root = (int) Tab::getIdFromClassName('AdminModules');
         }
 
+        // Parent tab (menu group)
+        $parent = new Tab();
+        $parent->active     = 1;
+        $parent->class_name = 'AdminPaiementFaciliteParent';
+        $parent->module     = $this->name;
+        $parent->id_parent  = $id_parent_root;
         foreach (Language::getLanguages() as $lang) {
-            $tab->name[$lang['id_lang']] = 'Demandes de facilité';
+            $parent->name[$lang['id_lang']] = 'Paiement Facilité';
+        }
+        if (!$parent->add()) {
+            return false;
         }
 
-        return $tab->add();
+        // Requests tab
+        $tab1 = new Tab();
+        $tab1->active     = 1;
+        $tab1->class_name = 'AdminPaiementFaciliteRequests';
+        $tab1->module     = $this->name;
+        $tab1->id_parent  = (int) $parent->id;
+        foreach (Language::getLanguages() as $lang) {
+            $tab1->name[$lang['id_lang']] = 'Demandes de facilité';
+        }
+        if (!$tab1->add()) {
+            return false;
+        }
+
+        // Organisations tab
+        $tab2 = new Tab();
+        $tab2->active     = 1;
+        $tab2->class_name = 'AdminPaiementFaciliteOrganisations';
+        $tab2->module     = $this->name;
+        $tab2->id_parent  = (int) $parent->id;
+        foreach (Language::getLanguages() as $lang) {
+            $tab2->name[$lang['id_lang']] = 'Organismes partenaires';
+        }
+        if (!$tab2->add()) {
+            return false;
+        }
+
+        return true;
     }
 
     private function uninstallTab()
     {
-        $id_tab = (int) Tab::getIdFromClassName('AdminPaiementFaciliteRequests');
-        if ($id_tab) {
-            $tab = new Tab($id_tab);
-            return $tab->delete();
+        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteParent'] as $class) {
+            $id_tab = (int) Tab::getIdFromClassName($class);
+            if ($id_tab) {
+                (new Tab($id_tab))->delete();
+            }
         }
         return true;
     }
@@ -245,9 +277,13 @@ class PaiementFacilite extends PaymentModule
 
     public function hookDisplayBackOfficeHeader()
     {
+        $controller = Tools::getValue('controller');
+        $pfControllers = ['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations'];
+
         if (
             Tools::getValue('configure') === $this->name
             || Tools::getValue('module_name') === $this->name
+            || in_array($controller, $pfControllers)
         ) {
             $this->context->controller->addCSS($this->_path . 'views/css/paiementfacilite.css');
         }
