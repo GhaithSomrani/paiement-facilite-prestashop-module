@@ -89,6 +89,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         ];
 
         $this->addRowAction('view');
+        $this->addRowAction('edit');
     }
 
     // -------------------------------------------------------------------------
@@ -360,6 +361,245 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             null,
             _PS_MODULE_DIR_ . 'paiementfacilite/mails/'
         );
+    }
+
+    // -------------------------------------------------------------------------
+    // CREATE / EDIT FORM
+    // -------------------------------------------------------------------------
+
+    public function renderForm()
+    {
+        // Customer list for dropdown
+        $raw_customers = Customer::getCustomers(true);
+        $customers = [];
+        foreach ($raw_customers as $c) {
+            $customers[] = [
+                'id_customer' => (int) $c['id_customer'],
+                'name'        => $c['firstname'] . ' ' . $c['lastname'] . ' (' . $c['email'] . ')',
+            ];
+        }
+
+        // Organisation list
+        $orgs = [['id_organisation' => 0, 'name' => $this->l('— Aucun —')]];
+        foreach (PaiementFaciliteOrganisation::getActiveOrganisations() as $o) {
+            $orgs[] = $o;
+        }
+
+        $this->fields_form = [
+            'legend' => [
+                'title' => $this->l('Demande de paiement par facilité'),
+                'icon'  => 'icon-file-text',
+            ],
+            'input' => [
+                // ── Identification ──
+                [
+                    'type'     => 'select',
+                    'label'    => $this->l('Client'),
+                    'name'     => 'id_customer',
+                    'required' => true,
+                    'options'  => [
+                        'query' => $customers,
+                        'id'    => 'id_customer',
+                        'name'  => 'name',
+                    ],
+                ],
+                [
+                    'type'     => 'text',
+                    'label'    => $this->l('ID Adresse'),
+                    'name'     => 'id_address',
+                    'required' => true,
+                    'hint'     => $this->l('Identifiant numérique de l\'adresse du client (ps_address.id_address).'),
+                    'col'      => 3,
+                ],
+                // ── Type de client ──
+                [
+                    'type'   => 'radio',
+                    'label'  => $this->l('Type de client'),
+                    'name'   => 'is_company',
+                    'required' => true,
+                    'values' => [
+                        ['id' => 'ic0', 'value' => 0, 'label' => $this->l('Salarié / Retraité')],
+                        ['id' => 'ic1', 'value' => 1, 'label' => $this->l('Société')],
+                    ],
+                ],
+                [
+                    'type'   => 'radio',
+                    'label'  => $this->l('Retraité'),
+                    'name'   => 'is_retired',
+                    'values' => [
+                        ['id' => 'ir0', 'value' => 0, 'label' => $this->l('Non')],
+                        ['id' => 'ir1', 'value' => 1, 'label' => $this->l('Oui')],
+                    ],
+                ],
+                // ── Organisme ──
+                [
+                    'type'   => 'switch',
+                    'label'  => $this->l('Organisme partenaire'),
+                    'name'   => 'belongs_to_partner',
+                    'values' => [
+                        ['id' => 'bp1', 'value' => 1, 'label' => $this->l('Oui')],
+                        ['id' => 'bp0', 'value' => 0, 'label' => $this->l('Non')],
+                    ],
+                ],
+                [
+                    'type'    => 'select',
+                    'label'   => $this->l('Organisme'),
+                    'name'    => 'id_organisation',
+                    'options' => [
+                        'query' => $orgs,
+                        'id'    => 'id_organisation',
+                        'name'  => 'name',
+                    ],
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Organisme (autre)'),
+                    'name'  => 'organisation_autre',
+                    'hint'  => $this->l('Remplir si l\'organisme n\'est pas dans la liste.'),
+                ],
+                // ── Infos personnelles (individuel) ──
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Date de naissance'),
+                    'name'  => 'date_naissance',
+                    'hint'  => 'AAAA-MM-JJ',
+                    'col'   => 3,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('CIN'),
+                    'name'  => 'cin',
+                    'col'   => 3,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Fonction / Profession'),
+                    'name'  => 'fonction',
+                ],
+                // ── Infos société ──
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Raison sociale'),
+                    'name'  => 'raison_sociale',
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Matricule fiscal'),
+                    'name'  => 'matricule_fiscal',
+                    'col'   => 4,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Représentant légal'),
+                    'name'  => 'representant_legal',
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Date de naissance gérant'),
+                    'name'  => 'date_naissance_gerant',
+                    'hint'  => 'AAAA-MM-JJ',
+                    'col'   => 3,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('CIN gérant'),
+                    'name'  => 'cin_gerant',
+                    'col'   => 3,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Téléphone gérant'),
+                    'name'  => 'telephone_gerant',
+                    'col'   => 3,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Email gérant'),
+                    'name'  => 'email_gerant',
+                    'col'   => 4,
+                ],
+                // ── Détails du crédit ──
+                [
+                    'type'     => 'text',
+                    'label'    => $this->l('Montant du crédit (DT)'),
+                    'name'     => 'credit_amount',
+                    'required' => true,
+                    'col'      => 3,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('1ère tranche (DT)'),
+                    'name'  => 'premiere_tranche',
+                    'col'   => 3,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Mensualité (DT)'),
+                    'name'  => 'mensualite',
+                    'hint'  => $this->l('Calculée automatiquement si laissée à 0.'),
+                    'col'   => 3,
+                ],
+                [
+                    'type'  => 'text',
+                    'label' => $this->l('Nombre de mensualités'),
+                    'name'  => 'nb_mois',
+                    'hint'  => $this->l('Entre 2 et 12.'),
+                    'col'   => 2,
+                ],
+                [
+                    'type'  => 'textarea',
+                    'label' => $this->l('Commentaire'),
+                    'name'  => 'commentaire',
+                    'rows'  => 4,
+                ],
+                // ── Statut ──
+                [
+                    'type'     => 'select',
+                    'label'    => $this->l('Statut'),
+                    'name'     => 'status',
+                    'required' => true,
+                    'options'  => [
+                        'query' => [
+                            ['id' => 'pending',  'name' => $this->l('En attente')],
+                            ['id' => 'approved', 'name' => $this->l('Approuvé')],
+                            ['id' => 'rejected', 'name' => $this->l('Rejeté')],
+                        ],
+                        'id'   => 'id',
+                        'name' => 'name',
+                    ],
+                ],
+            ],
+            'submit' => [
+                'title' => $this->l('Enregistrer'),
+            ],
+        ];
+
+        return parent::renderForm();
+    }
+
+    public function processSave()
+    {
+        // Auto-calculate mensualite if not provided
+        $credit    = (float) Tools::getValue('credit_amount');
+        $tranche   = (float) Tools::getValue('premiere_tranche');
+        $nb_mois   = (int)   Tools::getValue('nb_mois');
+
+        if ($nb_mois < 2 || $nb_mois > 12) {
+            $nb_mois = 6;
+            $_POST['nb_mois'] = $nb_mois;
+        }
+
+        $mensualite = (float) Tools::getValue('mensualite');
+        if ($mensualite <= 0 && $credit > 0 && $tranche < $credit && $nb_mois > 0) {
+            $_POST['mensualite'] = round(($credit - $tranche) / $nb_mois, 2);
+        }
+
+        // Nullify empty optional ints so ObjectModel doesn't store 0
+        if (!Tools::getValue('id_organisation')) {
+            $_POST['id_organisation'] = null;
+        }
+
+        parent::processSave();
     }
 
     // -------------------------------------------------------------------------
