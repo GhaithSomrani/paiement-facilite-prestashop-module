@@ -328,10 +328,26 @@ class PaiementFacilite extends PaymentModule
         }
 
         $order = $params['order'];
+
+        // Load the linked paiementfacilite request for this order
+        require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteRequest.php';
+        $pf_request = null;
+        $row = Db::getInstance()->getRow(
+            'SELECT id_request FROM `' . _DB_PREFIX_ . 'pf_request_orders`
+             WHERE id_order = ' . (int) $order->id
+        );
+        if ($row) {
+            $candidate = new PaiementFaciliteRequest((int) $row['id_request']);
+            if (Validate::isLoadedObject($candidate)) {
+                $pf_request = $candidate;
+            }
+        }
+
         $this->context->smarty->assign([
             'shop_name'  => $this->context->shop->name,
             'id_order'   => $order->id,
             'reference'  => $order->reference,
+            'pf_request' => $pf_request,
         ]);
 
         return $this->fetch('module:paiementfacilite/views/templates/hook/payment_return.tpl');

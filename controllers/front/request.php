@@ -327,7 +327,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // --- Validate order from cart (if coming from checkout) ---
-        $cart = $this->context->cart;
+        $cart           = $this->context->cart;
+        $id_order       = 0;
+        $cart_id_saved  = $cart ? (int) $cart->id : 0;
+
         if ($cart && $cart->id && $cart->nbProducts() > 0) {
             $id_order = $this->validateCartAsOrder($request->id, $cart);
         }
@@ -344,14 +347,28 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // $this->module->sendConfirmationEmail($request->id);
 
         // --- Redirect to confirmation ---
-        Tools::redirect(
-            $this->context->link->getModuleLink(
+        if ($id_order && $cart_id_saved) {
+            // Checkout flow: use PS native order-confirmation page
+            $url = $this->context->link->getPageLink(
+                'order-confirmation', true, null,
+                [
+                    'id_cart'   => $cart_id_saved,
+                    'id_module' => (int) $this->module->id,
+                    'id_order'  => $id_order,
+                    'key'       => $this->context->customer->secure_key,
+                ]
+            );
+        } else {
+            // Standalone flow: module confirmation page
+            $url = $this->context->link->getModuleLink(
                 'paiementfacilite',
                 'request',
                 ['confirmed' => 1, 'id_request' => (int) $request->id],
                 true
-            )
-        );
+            );
+        }
+
+        Tools::redirect($url);
     }
 
     /**
