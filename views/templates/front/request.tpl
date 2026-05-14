@@ -352,11 +352,7 @@
 
         <div class="pf-nav">
           <button type="button" class="pf-btn-prev pf-prev-btn">← {l s='Précédent' mod='paiementfacilite'}</button>
-          <button type="button" class="pf-btn-next pf-next-btn" id="pf-step5-next">{l s='Suivant' mod='paiementfacilite'}
-            →</button>
-          <button type="submit" class="pf-submit-btn" id="pf-step5-submit" style="display:none;">
-            {l s='Je dépose mon dossier' mod='paiementfacilite'}
-          </button>
+          <button type="button" class="pf-btn-next pf-next-btn" id="pf-step5-next">{l s='Suivant' mod='paiementfacilite'} →</button>
         </div>
       </section>
 

@@ -29,6 +29,11 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/paiementfacilite.css');
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/paiementfacilite.js');
 
+        // Confirmation page (handled by postProcess before initContent runs)
+        if (Tools::getValue('confirmed') && Tools::getValue('id_request')) {
+            return;
+        }
+
         // Handle AJAX sub-actions
         if (Tools::isSubmit('ajax')) {
             $this->handleAjax();
@@ -160,12 +165,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $customer_addresses = $this->context->customer->getAddresses($id_lang);
         $address_ids        = array_column($customer_addresses, 'id_address');
         if (!in_array($id_address, $address_ids)) {
-            // Partner org members skipped steps 3/4 — auto-assign their first address
-            if ($belongs_to_partner && !empty($address_ids)) {
-                $id_address = (int) $address_ids[0];
-            } else {
-                $errors[] = $this->module->l('Adresse invalide.');
-            }
+            $errors[] = $this->module->l('Adresse invalide.');
         }
 
         // --- Organisation ---
@@ -192,12 +192,12 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $id_organisation = null;
         }
 
-        // --- Personal info (individuals only, non-partner) ---
-        $date_naissance = ($is_company || $belongs_to_partner) ? null : Tools::getValue('date_naissance');
-        $fonction       = ($is_company || $belongs_to_partner) ? null : Tools::getValue('fonction');
-        $cin            = ($is_company || $belongs_to_partner) ? null : Tools::getValue('cin');
+        // --- Personal info (individuals only) ---
+        $date_naissance = $is_company ? null : Tools::getValue('date_naissance');
+        $fonction       = $is_company ? null : Tools::getValue('fonction');
+        $cin            = $is_company ? null : Tools::getValue('cin');
 
-        if (!$is_company && !$belongs_to_partner) {
+        if (!$is_company) {
             if (empty($date_naissance) || !Validate::isDate($date_naissance)) {
                 $errors[] = $this->module->l('Date de naissance invalide.');
             }
@@ -217,7 +217,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $telephone_gerant      = null;
         $email_gerant          = null;
 
-        if ($is_company && !$belongs_to_partner) {
+        if ($is_company) {
             $raison_sociale        = Tools::getValue('raison_sociale');
             $representant_legal    = Tools::getValue('representant_legal');
             $date_naissance_gerant = Tools::getValue('date_naissance_gerant');
@@ -379,6 +379,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
      */
     private function validateCartAsOrder($id_request, Cart $cart)
     {
+        /** @var PaiementFacilite $module */
+        $module = $this->module;
         $id_pending_state = (int) Configuration::get('PF_OS_PENDING');
         if (!$id_pending_state) {
             // Fallback to PS "Awaiting bank wire payment" if our state isn't installed
@@ -386,21 +388,21 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         $amount  = (float) $cart->getOrderTotal(true, Cart::BOTH);
-        $message = $this->module->l('Demande de paiement par facilité #') . $id_request;
+        $message = $module->l('Demande de paiement par facilité #') . $id_request;
 
         try {
-            $this->module->validateOrder(
+            $module->validateOrder(
                 (int) $cart->id,
                 $id_pending_state,
                 $amount,
-                $this->module->displayName,
+                $module->displayName,
                 $message,
                 ['transaction_id' => 'PF-' . $id_request],
                 null,
                 false,
                 $this->context->customer->secure_key
             );
-            return (int) $this->module->currentOrder;
+            return (int) $module->currentOrder;
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
                 'PaiementFacilite: validateOrder failed for request #' . $id_request . ' — ' . $e->getMessage(),
@@ -588,8 +590,6 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
     {
         if (Tools::getValue('confirmed') && Tools::getValue('id_request')) {
             $this->initContentConfirmation();
-            // Prevent default initContent from running
-            $this->template_vars_set = true;
         }
     }
 }

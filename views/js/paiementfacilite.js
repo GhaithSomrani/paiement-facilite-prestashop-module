@@ -106,13 +106,9 @@
   }
 
   function updatePartnerNavigation() {
-    if (PF.belongsToPartner) {
-      $('#pf-step5-next').hide();
-      $('#pf-step5-submit').show();
-    } else {
-      $('#pf-step5-next').show();
-      $('#pf-step5-submit').hide();
-    }
+    // All users including partner-org members now go through all steps
+    $('#pf-step5-next').show();
+    $('#pf-step5-submit').hide();
   }
 
   function updateDocsStep() {
@@ -276,16 +272,11 @@
   function initNavButtons() {
     $(document).on('click', '.pf-next-btn', function () {
       if (!validateStep(PF.currentStep)) return;
-      var nextStep = (PF.belongsToPartner && PF.currentStep === 2) ? 5 : PF.currentStep + 1;
-      saveDraft(nextStep);
-      goTo(nextStep);
+      saveDraft(PF.currentStep + 1);
+      goTo(PF.currentStep + 1);
     });
     $(document).on('click', '.pf-prev-btn', function () {
-      if (PF.belongsToPartner && PF.currentStep === 5) {
-        goTo(2);
-      } else {
-        goTo(PF.currentStep - 1);
-      }
+      goTo(PF.currentStep - 1);
     });
     // Clear draft on final submission
     $('#pf-form').on('submit', function () {
