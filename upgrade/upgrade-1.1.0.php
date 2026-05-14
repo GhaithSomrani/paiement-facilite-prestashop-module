@@ -24,10 +24,12 @@ function upgrade_module_1_1_0($module)
         return false;
     }
 
-    // ── Schema: nb_mois column on pf_requests ────────────────────────────────
+    // ── Schema: new columns on pf_requests ───────────────────────────────────
     $db->execute(
         "ALTER TABLE `" . _DB_PREFIX_ . "pf_requests`
-         ADD COLUMN IF NOT EXISTS `nb_mois` tinyint(3) unsigned NOT NULL DEFAULT 12 AFTER `mensualite`"
+         ADD COLUMN IF NOT EXISTS `nb_mois`          tinyint(3) unsigned NOT NULL DEFAULT 6   AFTER `mensualite`,
+         ADD COLUMN IF NOT EXISTS `telephone_gerant` varchar(32)  DEFAULT NULL                AFTER `cin_gerant`,
+         ADD COLUMN IF NOT EXISTS `email_gerant`     varchar(128) DEFAULT NULL                AFTER `telephone_gerant`"
     );
 
     // ── Order states ──────────────────────────────────────────────────────────

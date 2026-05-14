@@ -175,28 +175,37 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
 
         // --- Société fields ---
         $raison_sociale        = null;
-        $matricule_fiscal      = null;
         $date_naissance_gerant = null;
         $representant_legal    = null;
         $cin_gerant            = null;
+        $telephone_gerant      = null;
+        $email_gerant          = null;
 
         if ($is_company && !$belongs_to_partner) {
-            $raison_sociale     = Tools::getValue('raison_sociale');
-            $matricule_fiscal   = Tools::getValue('matricule_fiscal');
-            $representant_legal = Tools::getValue('representant_legal');
-            $cin_gerant         = Tools::getValue('cin_gerant');
+            $raison_sociale        = Tools::getValue('raison_sociale');
+            $representant_legal    = Tools::getValue('representant_legal');
+            $date_naissance_gerant = Tools::getValue('date_naissance_gerant');
+            $telephone_gerant      = Tools::getValue('telephone_gerant');
+            $email_gerant          = Tools::getValue('email_gerant');
+            $cin_gerant            = Tools::getValue('cin_gerant');
 
             if (empty($raison_sociale)) {
                 $errors[] = $this->module->l('La raison sociale est obligatoire.');
             }
-            if (empty($matricule_fiscal)) {
-                $errors[] = $this->module->l('Le matricule fiscal est obligatoire.');
-            }
             if (empty($representant_legal)) {
                 $errors[] = $this->module->l('Le représentant légal est obligatoire.');
             }
+            if (empty($date_naissance_gerant) || !Validate::isDate($date_naissance_gerant)) {
+                $errors[] = $this->module->l('Date de naissance du gérant invalide.');
+            }
+            if (empty($telephone_gerant)) {
+                $errors[] = $this->module->l('Le numéro de téléphone du gérant est obligatoire.');
+            }
+            if (empty($email_gerant) || !Validate::isEmail($email_gerant)) {
+                $errors[] = $this->module->l('Adresse email du gérant invalide.');
+            }
             if (empty($cin_gerant)) {
-                $errors[] = $this->module->l('Le CIN du gérant est obligatoire.');
+                $errors[] = $this->module->l('Le numéro de CIN du gérant est obligatoire.');
             }
         }
 
@@ -250,10 +259,12 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $request->date_naissance        = pSQL($date_naissance);
         $request->fonction              = pSQL($fonction);
         $request->cin                   = pSQL($cin);
-        $request->raison_sociale     = $raison_sociale ? pSQL($raison_sociale) : null;
-        $request->matricule_fiscal   = $matricule_fiscal ? pSQL($matricule_fiscal) : null;
-        $request->representant_legal = $representant_legal ? pSQL($representant_legal) : null;
-        $request->cin_gerant         = $cin_gerant ? pSQL($cin_gerant) : null;
+        $request->raison_sociale        = $raison_sociale ? pSQL($raison_sociale) : null;
+        $request->representant_legal    = $representant_legal ? pSQL($representant_legal) : null;
+        $request->date_naissance_gerant = $date_naissance_gerant ? pSQL($date_naissance_gerant) : null;
+        $request->telephone_gerant      = $telephone_gerant ? pSQL($telephone_gerant) : null;
+        $request->email_gerant          = $email_gerant ? pSQL($email_gerant) : null;
+        $request->cin_gerant            = $cin_gerant ? pSQL($cin_gerant) : null;
         $request->credit_amount      = $credit_amount;
         $request->premiere_tranche   = $premiere_tranche;
         $request->mensualite         = $mensualite;
@@ -335,55 +346,61 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
 
     private function processDocumentUploads($id_request, $is_company, $is_retired)
     {
-        // Common single-file uploads for both types
-        $single_common = [
-            PaiementFaciliteDocument::TYPE_CIN_RECTO,
-            PaiementFaciliteDocument::TYPE_CIN_VERSO,
-            PaiementFaciliteDocument::TYPE_RIB,
-            PaiementFaciliteDocument::TYPE_FACTURE_STEG,
-        ];
-
-        // Type-specific single-file uploads
-        $single_specific = [];
         if ($is_company) {
-            $single_specific[] = PaiementFaciliteDocument::TYPE_REGISTRE_COMMERCE;
-        } else {
-            if ($is_retired) {
-                $single_specific[] = PaiementFaciliteDocument::TYPE_ATTESTATION;
-            }
-        }
-
-        foreach (array_merge($single_common, $single_specific) as $type) {
-            if (!empty($_FILES[$type]['name']) && $_FILES[$type]['error'] === UPLOAD_ERR_OK) {
-                PaiementFaciliteDocument::saveUpload($id_request, $type, $_FILES[$type]);
-            }
-        }
-
-        // Multi-file uploads
-        $multi = [PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE => 3];
-        if ($is_company) {
-            $multi[PaiementFaciliteDocument::TYPE_STATUTS] = 5;
-        } else {
-            if (!$is_retired) {
-                $multi[PaiementFaciliteDocument::TYPE_FICHE_PAIE] = 3;
-            }
-        }
-
-        foreach ($multi as $type => $max) {
-            if (empty($_FILES[$type]) || !is_array($_FILES[$type]['name'])) {
-                continue;
-            }
-            $count = count($_FILES[$type]['name']);
-            for ($i = 0; $i < min($count, $max); $i++) {
-                if ($_FILES[$type]['error'][$i] === UPLOAD_ERR_OK) {
-                    PaiementFaciliteDocument::saveUpload($id_request, $type, [
-                        'name'     => $_FILES[$type]['name'][$i],
-                        'type'     => $_FILES[$type]['type'][$i],
-                        'tmp_name' => $_FILES[$type]['tmp_name'][$i],
-                        'error'    => $_FILES[$type]['error'][$i],
-                        'size'     => $_FILES[$type]['size'][$i],
-                    ]);
+            // Company single-file uploads
+            // cin_gerant_recto / cin_gerant_verso are saved under the standard cin type constants
+            $singles = [
+                'copie_rne'        => PaiementFaciliteDocument::TYPE_COPIE_RNE,
+                'cin_gerant_recto' => PaiementFaciliteDocument::TYPE_CIN_RECTO,
+                'cin_gerant_verso' => PaiementFaciliteDocument::TYPE_CIN_VERSO,
+                'rib'              => PaiementFaciliteDocument::TYPE_RIB,
+            ];
+            foreach ($singles as $input => $type) {
+                if (!empty($_FILES[$input]['name']) && $_FILES[$input]['error'] === UPLOAD_ERR_OK) {
+                    PaiementFaciliteDocument::saveUpload($id_request, $type, $_FILES[$input]);
                 }
+            }
+            // Company multi-file uploads
+            $this->saveMultiUpload($id_request, 'releve_bancaire', PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE, 3);
+        } else {
+            // Individual single-file uploads
+            $singles = [
+                'cin_recto'   => PaiementFaciliteDocument::TYPE_CIN_RECTO,
+                'cin_verso'   => PaiementFaciliteDocument::TYPE_CIN_VERSO,
+                'rib'         => PaiementFaciliteDocument::TYPE_RIB,
+                'facture_steg' => PaiementFaciliteDocument::TYPE_FACTURE_STEG,
+            ];
+            if ($is_retired) {
+                $singles['attestation_retraite'] = PaiementFaciliteDocument::TYPE_ATTESTATION;
+            }
+            foreach ($singles as $input => $type) {
+                if (!empty($_FILES[$input]['name']) && $_FILES[$input]['error'] === UPLOAD_ERR_OK) {
+                    PaiementFaciliteDocument::saveUpload($id_request, $type, $_FILES[$input]);
+                }
+            }
+            // Individual multi-file uploads
+            $this->saveMultiUpload($id_request, 'releve_bancaire', PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE, 3);
+            if (!$is_retired) {
+                $this->saveMultiUpload($id_request, 'fiche_paie', PaiementFaciliteDocument::TYPE_FICHE_PAIE, 3);
+            }
+        }
+    }
+
+    private function saveMultiUpload($id_request, $input_name, $type, $max)
+    {
+        if (empty($_FILES[$input_name]) || !is_array($_FILES[$input_name]['name'])) {
+            return;
+        }
+        $count = count($_FILES[$input_name]['name']);
+        for ($i = 0; $i < min($count, $max); $i++) {
+            if ($_FILES[$input_name]['error'][$i] === UPLOAD_ERR_OK) {
+                PaiementFaciliteDocument::saveUpload($id_request, $type, [
+                    'name'     => $_FILES[$input_name]['name'][$i],
+                    'type'     => $_FILES[$input_name]['type'][$i],
+                    'tmp_name' => $_FILES[$input_name]['tmp_name'][$i],
+                    'error'    => $_FILES[$input_name]['error'][$i],
+                    'size'     => $_FILES[$input_name]['size'][$i],
+                ]);
             }
         }
     }

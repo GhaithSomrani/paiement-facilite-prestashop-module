@@ -35,6 +35,10 @@ class PaiementFaciliteRequest extends ObjectModel
     public $representant_legal;
     /** @var string|null */
     public $cin_gerant;
+    /** @var string|null */
+    public $telephone_gerant;
+    /** @var string|null */
+    public $email_gerant;
     /** @var float */
     public $credit_amount = 0.00;
     /** @var float */
@@ -71,6 +75,8 @@ class PaiementFaciliteRequest extends ObjectModel
             'date_naissance_gerant' => ['type' => self::TYPE_DATE,   'validate' => 'isDate'],
             'representant_legal'    => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'size' => 255],
             'cin_gerant'            => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'size' => 32],
+            'telephone_gerant'      => ['type' => self::TYPE_STRING, 'validate' => 'isPhoneNumber',  'size' => 32],
+            'email_gerant'          => ['type' => self::TYPE_STRING, 'validate' => 'isEmail',        'size' => 128],
             'credit_amount'         => ['type' => self::TYPE_FLOAT,  'validate' => 'isPrice'],
             'premiere_tranche'      => ['type' => self::TYPE_FLOAT,  'validate' => 'isPrice'],
             'mensualite'            => ['type' => self::TYPE_FLOAT,  'validate' => 'isPrice'],

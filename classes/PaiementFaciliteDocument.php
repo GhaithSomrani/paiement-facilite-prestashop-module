@@ -32,6 +32,7 @@ class PaiementFaciliteDocument extends ObjectModel
     const TYPE_FICHE_PAIE          = 'fiche_paie';
     const TYPE_ATTESTATION         = 'attestation_retraite';
     // Document type constants — company
+    const TYPE_COPIE_RNE           = 'copie_rne';
     const TYPE_REGISTRE_COMMERCE   = 'registre_commerce';
     const TYPE_STATUTS             = 'statuts_societe';
     // Document type constants — common
@@ -44,6 +45,7 @@ class PaiementFaciliteDocument extends ObjectModel
     public static $allowed_types = [
         self::TYPE_FICHE_PAIE,
         self::TYPE_ATTESTATION,
+        self::TYPE_COPIE_RNE,
         self::TYPE_REGISTRE_COMMERCE,
         self::TYPE_STATUTS,
         self::TYPE_CIN_RECTO,

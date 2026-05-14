@@ -38,6 +38,8 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_requests` (
     `date_naissance_gerant` date DEFAULT NULL,
     `representant_legal` varchar(255) DEFAULT NULL,
     `cin_gerant` varchar(32) DEFAULT NULL,
+    `telephone_gerant` varchar(32) DEFAULT NULL,
+    `email_gerant` varchar(128) DEFAULT NULL,
     `credit_amount` decimal(10,2) NOT NULL DEFAULT 0.00,
     `premiere_tranche` decimal(10,2) NOT NULL DEFAULT 0.00,
     `mensualite` decimal(10,2) NOT NULL DEFAULT 0.00,

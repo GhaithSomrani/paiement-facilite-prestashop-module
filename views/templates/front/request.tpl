@@ -198,16 +198,25 @@
             <input type="text" name="raison_sociale" id="pf-raison-sociale" maxlength="255">
           </div>
           <div class="pf-field">
-            <label for="pf-matricule-fiscal">{l s='Matricule fiscal' mod='paiementfacilite'} *</label>
-            <input type="text" name="matricule_fiscal" id="pf-matricule-fiscal" maxlength="64">
-          </div>
-          <div class="pf-field">
             <label for="pf-representant-legal">{l s='Représentant légal' mod='paiementfacilite'} *</label>
             <input type="text" name="representant_legal" id="pf-representant-legal" maxlength="255">
           </div>
           <div class="pf-field">
-            <label for="pf-cin-gerant">{l s='CIN du gérant' mod='paiementfacilite'} *</label>
-            <input type="text" name="cin_gerant" id="pf-cin-gerant" maxlength="32">
+            <label for="pf-date-naissance-gerant">{l s='Date de naissance du gérant' mod='paiementfacilite'} *</label>
+            <input type="date" name="date_naissance_gerant" id="pf-date-naissance-gerant"
+                   max="{$smarty.now|date_format:'%Y-%m-%d'}">
+          </div>
+          <div class="pf-field">
+            <label for="pf-telephone-gerant">{l s='Numéro de téléphone' mod='paiementfacilite'} *</label>
+            <input type="tel" name="telephone_gerant" id="pf-telephone-gerant" maxlength="32" placeholder="+216 XX XXX XXX">
+          </div>
+          <div class="pf-field">
+            <label for="pf-email-gerant">{l s='Adresse email' mod='paiementfacilite'} *</label>
+            <input type="email" name="email_gerant" id="pf-email-gerant" maxlength="128">
+          </div>
+          <div class="pf-field">
+            <label for="pf-cin-gerant">{l s="Numéro de Carte d'identité nationale" mod='paiementfacilite'} *</label>
+            <input type="text" name="cin_gerant" id="pf-cin-gerant" maxlength="32" placeholder="00000000">
           </div>
         </div>
       </div>
@@ -314,50 +323,70 @@
       {* ── Company docs (société) ── *}
       <div id="pf-doc-societe-block" class="pf-doc-group" style="display:none;">
         <div class="pf-doc">
-          <p class="pf-doc-title">{l s='Registre de commerce / Patente' mod='paiementfacilite'} *</p>
-          <p class="pf-doc-hint">{l s='PNG, JPEG ou PDF — max 5 MB' mod='paiementfacilite'}</p>
+          <p class="pf-doc-title">{l s='Copie du RNE' mod='paiementfacilite'} *</p>
+          <p class="pf-doc-hint">{l s='Registre National des Entreprises (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
           <div class="pf-file-row">
             <label class="pf-file-pick">
-              <input type="file" name="registre_commerce" accept=".jpg,.jpeg,.png,.pdf">
+              <input type="file" name="copie_rne" accept=".jpg,.jpeg,.png,.pdf">
               <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
               <span class="pf-file-name"></span>
             </label>
           </div>
         </div>
         <div class="pf-doc">
-          <p class="pf-doc-title">{l s='Statuts de la société' mod='paiementfacilite'} *</p>
-          <p class="pf-doc-hint">{l s='PNG, JPEG ou PDF — max 5 MB' mod='paiementfacilite'}</p>
-          <div class="pf-file-row" id="pf-statuts-rows">
+          <p class="pf-doc-title">{l s='Carte d\'identité du gérant' mod='paiementfacilite'} *</p>
+          <p class="pf-doc-hint">{l s='Recto et verso (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
+          <div class="pf-file-row two-cols">
             <label class="pf-file-pick">
-              <input type="file" name="statuts_societe[]" accept=".jpg,.jpeg,.png,.pdf">
+              <input type="file" name="cin_gerant_recto" accept=".jpg,.jpeg,.png,.pdf">
+              <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
+              <span class="pf-file-name"></span>
+              <span class="pf-file-side">{l s='Recto' mod='paiementfacilite'}</span>
+            </label>
+            <label class="pf-file-pick">
+              <input type="file" name="cin_gerant_verso" accept=".jpg,.jpeg,.png,.pdf">
+              <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
+              <span class="pf-file-name"></span>
+              <span class="pf-file-side">{l s='Verso' mod='paiementfacilite'}</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      {* ── Individual common docs (hidden for companies) ── *}
+      <div id="pf-doc-individual-common" class="pf-doc-group">
+        <div class="pf-doc">
+          <p class="pf-doc-title">{l s='Carte d\'identité nationale (CIN)' mod='paiementfacilite'} *</p>
+          <p class="pf-doc-hint">{l s='Recto et verso (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
+          <div class="pf-file-row two-cols">
+            <label class="pf-file-pick">
+              <input type="file" name="cin_recto" accept=".jpg,.jpeg,.png,.pdf">
+              <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
+              <span class="pf-file-name"></span>
+              <span class="pf-file-side">{l s='Recto' mod='paiementfacilite'}</span>
+            </label>
+            <label class="pf-file-pick">
+              <input type="file" name="cin_verso" accept=".jpg,.jpeg,.png,.pdf">
+              <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
+              <span class="pf-file-name"></span>
+              <span class="pf-file-side">{l s='Verso' mod='paiementfacilite'}</span>
+            </label>
+          </div>
+        </div>
+        <div class="pf-doc">
+          <p class="pf-doc-title">{l s='Dernière facture STEG ou SONEDE' mod='paiementfacilite'} *</p>
+          <p class="pf-doc-hint">{l s='PNG, JPEG ou PDF — max 5 MB' mod='paiementfacilite'}</p>
+          <div class="pf-file-row">
+            <label class="pf-file-pick">
+              <input type="file" name="facture_steg" accept=".jpg,.jpeg,.png,.pdf">
               <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
               <span class="pf-file-name"></span>
             </label>
           </div>
-          <button type="button" class="pf-add-more" data-target="pf-statuts-rows" data-max="5">+ {l s='Ajouter une page' mod='paiementfacilite'}</button>
         </div>
       </div>
 
       {* ── Common docs (individual & company) ── *}
-      <div class="pf-doc pf-doc-group" id="pf-doc-cin">
-        <p class="pf-doc-title" id="pf-cin-doc-title">{l s='Carte d\'identité nationale (CIN)' mod='paiementfacilite'} *</p>
-        <p class="pf-doc-hint">{l s='Recto et verso (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
-        <div class="pf-file-row two-cols">
-          <label class="pf-file-pick">
-            <input type="file" name="cin_recto" id="pf-cin-recto" accept=".jpg,.jpeg,.png,.pdf">
-            <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
-            <span class="pf-file-name"></span>
-            <span class="pf-file-side">{l s='Recto' mod='paiementfacilite'}</span>
-          </label>
-          <label class="pf-file-pick">
-            <input type="file" name="cin_verso" id="pf-cin-verso" accept=".jpg,.jpeg,.png,.pdf">
-            <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
-            <span class="pf-file-name"></span>
-            <span class="pf-file-side">{l s='Verso' mod='paiementfacilite'}</span>
-          </label>
-        </div>
-      </div>
-
       <div class="pf-doc pf-doc-group">
         <p class="pf-doc-title">{l s='Identité Bancaire (RIB)' mod='paiementfacilite'} *</p>
         <p class="pf-doc-hint">{l s='Avec cachet de la banque (PNG, JPEG ou PDF — max 5 MB)' mod='paiementfacilite'}</p>
@@ -381,18 +410,6 @@
           </label>
         </div>
         <button type="button" class="pf-add-more" data-target="pf-releve-rows" data-max="3">+ {l s='Ajouter un autre fichier' mod='paiementfacilite'}</button>
-      </div>
-
-      <div class="pf-doc pf-doc-group">
-        <p class="pf-doc-title">{l s='Dernière facture STEG ou SONEDE' mod='paiementfacilite'} *</p>
-        <p class="pf-doc-hint">{l s='PNG, JPEG ou PDF — max 5 MB' mod='paiementfacilite'}</p>
-        <div class="pf-file-row">
-          <label class="pf-file-pick">
-            <input type="file" name="facture_steg" id="pf-facture-steg" accept=".jpg,.jpeg,.png,.pdf">
-            <span class="pf-file-btn">{l s='Choisir un fichier' mod='paiementfacilite'}</span>
-            <span class="pf-file-name"></span>
-          </label>
-        </div>
       </div>
 
       {* Partner bypass *}

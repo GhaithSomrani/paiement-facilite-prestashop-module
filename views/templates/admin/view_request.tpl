@@ -107,31 +107,33 @@
       <div class="panel-heading">{l s='Informations Société' mod='paiementfacilite'}</div>
       <div class="panel-body">
         <div class="row">
-          <div class="col-sm-3">
+          <div class="col-sm-4">
             <p class="pf-field-label">{l s='Raison sociale' mod='paiementfacilite'}</p>
             <p class="pf-field-value">{$pf_request->raison_sociale|escape:'html'}</p>
           </div>
-          <div class="col-sm-3">
-            <p class="pf-field-label">{l s='Matricule fiscal' mod='paiementfacilite'}</p>
-            <p class="pf-field-value">{$pf_request->matricule_fiscal|escape:'html'}</p>
-          </div>
-          <div class="col-sm-3">
+          <div class="col-sm-4">
             <p class="pf-field-label">{l s='Représentant légal' mod='paiementfacilite'}</p>
             <p class="pf-field-value">{$pf_request->representant_legal|escape:'html'}</p>
           </div>
-          <div class="col-sm-3">
-            <p class="pf-field-label">{l s='CIN gérant' mod='paiementfacilite'}</p>
-            <p class="pf-field-value">{$pf_request->cin_gerant|escape:'html'}</p>
-          </div>
-        </div>
-        {if $pf_request->date_naissance_gerant}
-        <div class="row">
-          <div class="col-sm-3">
-            <p class="pf-field-label">{l s='Date de naissance gérant' mod='paiementfacilite'}</p>
+          <div class="col-sm-4">
+            <p class="pf-field-label">{l s='Date de naissance du gérant' mod='paiementfacilite'}</p>
             <p class="pf-field-value">{$pf_request->date_naissance_gerant|escape:'html'}</p>
           </div>
         </div>
-        {/if}
+        <div class="row" style="margin-top:12px;">
+          <div class="col-sm-4">
+            <p class="pf-field-label">{l s='Téléphone' mod='paiementfacilite'}</p>
+            <p class="pf-field-value">{$pf_request->telephone_gerant|escape:'html'}</p>
+          </div>
+          <div class="col-sm-4">
+            <p class="pf-field-label">{l s='Email' mod='paiementfacilite'}</p>
+            <p class="pf-field-value">{$pf_request->email_gerant|escape:'html'}</p>
+          </div>
+          <div class="col-sm-4">
+            <p class="pf-field-label">{l s='N° CIN du gérant' mod='paiementfacilite'}</p>
+            <p class="pf-field-value">{$pf_request->cin_gerant|escape:'html'}</p>
+          </div>
+        </div>
       </div>
     </div>
     {/if}
@@ -155,7 +157,7 @@
           </div>
           <div class="col-sm-3">
             <div class="pf-kpi">
-              <div class="pf-kpi-label">{l s='Mensualité (×12)' mod='paiementfacilite'}</div>
+              <div class="pf-kpi-label">{l s='Mensualité' mod='paiementfacilite'} (×{$pf_request->nb_mois|intval})</div>
               <div class="pf-kpi-value">{$pf_request->mensualite|string_format:"%.2f"} <span class="pf-kpi-unit">DT</span></div>
             </div>
           </div>

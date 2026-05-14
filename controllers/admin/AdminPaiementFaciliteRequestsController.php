@@ -202,15 +202,16 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
     private function getDocLabels()
     {
         return [
-            PaiementFaciliteDocument::TYPE_FICHE_PAIE          => $this->l('Fiche(s) de paie'),
-            PaiementFaciliteDocument::TYPE_ATTESTATION         => $this->l('Attestation retraite'),
-            PaiementFaciliteDocument::TYPE_REGISTRE_COMMERCE   => $this->l('Registre de commerce / Patente'),
-            PaiementFaciliteDocument::TYPE_STATUTS             => $this->l('Statuts de la société'),
-            PaiementFaciliteDocument::TYPE_CIN_RECTO           => $this->l('CIN Recto'),
-            PaiementFaciliteDocument::TYPE_CIN_VERSO           => $this->l('CIN Verso'),
-            PaiementFaciliteDocument::TYPE_RIB                 => $this->l('RIB / Identité bancaire'),
-            PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE     => $this->l('Relevé(s) bancaire(s)'),
-            PaiementFaciliteDocument::TYPE_FACTURE_STEG        => $this->l('Facture STEG / SONEDE'),
+            PaiementFaciliteDocument::TYPE_FICHE_PAIE        => $this->l('Fiche(s) de paie'),
+            PaiementFaciliteDocument::TYPE_ATTESTATION       => $this->l('Attestation retraite'),
+            PaiementFaciliteDocument::TYPE_COPIE_RNE         => $this->l('Copie du RNE'),
+            PaiementFaciliteDocument::TYPE_REGISTRE_COMMERCE => $this->l('Registre de commerce / Patente'),
+            PaiementFaciliteDocument::TYPE_STATUTS           => $this->l('Statuts de la société'),
+            PaiementFaciliteDocument::TYPE_CIN_RECTO         => $this->l('CIN / CIN gérant (Recto)'),
+            PaiementFaciliteDocument::TYPE_CIN_VERSO         => $this->l('CIN / CIN gérant (Verso)'),
+            PaiementFaciliteDocument::TYPE_RIB               => $this->l('RIB / Identité bancaire'),
+            PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE   => $this->l('Relevé(s) bancaire(s)'),
+            PaiementFaciliteDocument::TYPE_FACTURE_STEG      => $this->l('Facture STEG / SONEDE'),
         ];
     }
 

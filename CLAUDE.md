@@ -45,8 +45,9 @@ Customer checkout → clicks "Paiement par facilité" → front/request.php (6-s
 **`PaiementFaciliteDocument`** — table `pf_documents`
 - Files stored at `uploads/{id_request}/{doc_type}_{uniqid}.{ext}` inside the module directory.
 - `saveUpload()` validates MIME (jpeg/png/pdf), size ≤ 5 MB, and extension before moving.
-- Single-upload types: cin_recto, cin_verso, rib, facture_steg, attestation_retraite.
-- Multi-upload types (up to 3 each): fiche_paie, releve_bancaire.
+- Single-upload types: `cin_recto`, `cin_verso`, `rib`, `facture_steg`, `attestation_retraite`, `copie_rne`.
+- Multi-upload types (up to 3 each): `fiche_paie`, `releve_bancaire`.
+- For companies, `cin_gerant_recto` / `cin_gerant_verso` are stored under `TYPE_CIN_RECTO` / `TYPE_CIN_VERSO`.
 
 ### Controllers
 
@@ -56,8 +57,8 @@ Customer checkout → clicks "Paiement par facilité" → front/request.php (6-s
   - Default GET → render 6-step form
   - `?ajax=1` → JSON AJAX handler (`saveAddress`, `getAddresses`)
   - `?confirmed=1&id_request=X` → confirmation page (intercepted in `postProcess()`)
-- Form submission validated in `processForm()`: address ownership, org validity, credit range, première tranche ≥ 20% of credit, company-specific fields.
-- Mensualité calculated as `(credit_amount - premiere_tranche) / 12`.
+- Form submission validated in `processForm()`: address ownership, org validity, credit range, première tranche ≥ 20% of credit, `nb_mois` in [2–12] (defaults to 6 if out of range), company-specific fields.
+- Mensualité calculated as `(credit_amount - premiere_tranche) / nb_mois`.
 
 **`controllers/admin/AdminPaiementFaciliteRequestsController.php`** — `ModuleAdminController`
 - List view with custom JOIN to pull customer name, org name, and linked order.
@@ -71,16 +72,24 @@ Customer checkout → clicks "Paiement par facilité" → front/request.php (6-s
 - `sendConfirmationEmail()` sends two emails on new request: `pf_confirmation` to customer and `pf_admin_notification` to admin.
 - Tab installed under `AdminParentPayment` (fallback: `AdminModules`) as "Demandes de facilité".
 
-### Frontend JS (`views/js/paiement_facilite.js`)
-6-step multi-step form driven by a `PF` state object:
-1. Client type selection (salarié / retraité / société)
-2. Organisation membership
-3. Address selection (with AJAX address-add modal)
-4. Personal / company details + CIN
-5. Credit amount slider + première tranche
-6. Document uploads (conditionally shown; skipped for partner-org members)
+### Frontend JS (`views/js/paiementfacilite.js`)
+6-step multi-step form driven by a `PF` state object (`currentStep`, `isCompany`, `isRetired`, `belongsToPartner`, `selectedAddressId`):
 
-Errors from a failed submission are stored in the `pf_errors` cookie and displayed on reload.
+1. **Type** — salarié vs retraité vs société. After selecting individual, a retired toggle appears (Yes/No).
+2. **Organisme** — dropdown of partner orgs; value `-1` shows a free-text "autre" input; a valid org sets `PF.belongsToPartner = true` and shows a bypass notice.
+3. **Adresse** — dropdown of existing addresses + AJAX modal to add a new one. Auto-opened if customer has no addresses.
+4. **Infos** — personal fields (date_naissance, CIN, fonction) for individuals; company fields (raison_sociale, representant_legal, date_naissance_gerant, telephone_gerant, email_gerant, cin_gerant) for companies.
+5. **Crédit** — range slider (step 50, default 1150 DT), month selector toggle buttons 2–12 (default 6), première tranche input (auto-set to 20% min), live mensualité display.
+6. **Documents** — file pickers shown/hidden per client type (see below). Skipped entirely for partner-org members.
+
+**Partner-org shortcut navigation:** from step 2 → jumps directly to step 5 (skips steps 3 & 4); step 5 shows a submit button instead of "Suivant" (no step 6). On "Précédent" from step 5 → jumps back to step 2.
+
+**Document sets per type:**
+- Salarié: CIN recto/verso + facture STEG + 3× fiche de paie (multi) + RIB + 3× relevé bancaire (multi)
+- Retraité: CIN recto/verso + facture STEG + attestation retraite + RIB + 3× relevé bancaire (multi)
+- Société: copie RNE + CIN gérant recto/verso + RIB + 3× relevé bancaire (multi)
+
+Errors from a failed submission are read from `PF_CONFIG.errorsJson` (injected by the template from the `pf_errors` cookie) and cleared after display.
 
 ---
 

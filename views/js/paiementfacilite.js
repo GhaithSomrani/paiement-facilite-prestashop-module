@@ -128,11 +128,11 @@
     if (PF.isCompany) {
       $('#pf-doc-salarie-block').hide();
       $('#pf-doc-retraite-block').hide();
+      $('#pf-doc-individual-common').hide();
       $('#pf-doc-societe-block').show();
-      $('#pf-cin-doc-title').text('CIN du gérant *');
     } else {
       $('#pf-doc-societe-block').hide();
-      $('#pf-cin-doc-title').text("Carte d'identité nationale (CIN) *");
+      $('#pf-doc-individual-common').show();
       if (PF.isRetired) {
         $('#pf-doc-salarie-block').hide();
         $('#pf-doc-retraite-block').show();
@@ -338,10 +338,12 @@
 
       case 4:
         if (PF.isCompany) {
-          if (!$('#pf-raison-sociale').val().trim())     errors.push('La raison sociale est obligatoire.');
-          if (!$('#pf-matricule-fiscal').val().trim())   errors.push('Le matricule fiscal est obligatoire.');
-          if (!$('#pf-representant-legal').val().trim()) errors.push('Le représentant légal est obligatoire.');
-          if (!$('#pf-cin-gerant').val().trim())         errors.push('Le CIN du gérant est obligatoire.');
+          if (!$('#pf-raison-sociale').val().trim())      errors.push('La raison sociale est obligatoire.');
+          if (!$('#pf-representant-legal').val().trim())  errors.push('Le représentant légal est obligatoire.');
+          if (!$('#pf-date-naissance-gerant').val())      errors.push('La date de naissance du gérant est obligatoire.');
+          if (!$('#pf-telephone-gerant').val().trim())    errors.push('Le numéro de téléphone est obligatoire.');
+          if (!$('#pf-email-gerant').val().trim())        errors.push("L'adresse email est obligatoire.");
+          if (!$('#pf-cin-gerant').val().trim())          errors.push("Le numéro de CIN du gérant est obligatoire.");
         } else {
           if (!$('#pf-date-naissance').val())  errors.push('La date de naissance est obligatoire.');
           if (!$('#pf-cin').val().trim())      errors.push('Le numéro de CIN est obligatoire.');
@@ -362,37 +364,51 @@
 
       case 6:
         if (!PF.belongsToPartner) {
-          // Common required docs for everyone
-          ['cin_recto', 'cin_verso', 'rib', 'facture_steg'].forEach(function (name) {
-            var $inp = $('input[name="' + name + '"]');
-            if ($inp.length && (!$inp[0].files || !$inp[0].files.length)) {
-              var label = PF.isCompany && name.indexOf('cin') === 0
-                ? name.replace('cin_', 'CIN gérant ').replace('_', ' ')
-                : name.replace(/_/g, ' ');
-              errors.push('Le document "' + label + '" est obligatoire.');
-            }
-          });
+          // Common for everyone: rib + at least one relevé
+          var $rib = $('input[name="rib"]');
+          if ($rib.length && (!$rib[0].files || !$rib[0].files.length)) {
+            errors.push("L'identité bancaire (RIB) est obligatoire.");
+          }
+          var $releve = $('input[name="releve_bancaire[]"]').first();
+          if ($releve.length && (!$releve[0].files || !$releve[0].files.length)) {
+            errors.push('Au moins un relevé bancaire est obligatoire.');
+          }
 
           if (PF.isCompany) {
-            // Company-specific docs
-            var $rc = $('input[name="registre_commerce"]');
-            if ($rc.length && (!$rc[0].files || !$rc[0].files.length)) {
-              errors.push('Le registre de commerce / patente est obligatoire.');
+            var $rne = $('input[name="copie_rne"]');
+            if ($rne.length && (!$rne[0].files || !$rne[0].files.length)) {
+              errors.push('La copie du RNE est obligatoire.');
             }
-            var $st = $('input[name="statuts_societe[]"]').first();
-            if ($st.length && (!$st[0].files || !$st[0].files.length)) {
-              errors.push('Les statuts de la société sont obligatoires.');
+            var $cgr = $('input[name="cin_gerant_recto"]');
+            if ($cgr.length && (!$cgr[0].files || !$cgr[0].files.length)) {
+              errors.push("La carte d'identité du gérant (recto) est obligatoire.");
+            }
+            var $cgv = $('input[name="cin_gerant_verso"]');
+            if ($cgv.length && (!$cgv[0].files || !$cgv[0].files.length)) {
+              errors.push("La carte d'identité du gérant (verso) est obligatoire.");
             }
           } else {
-            // Individual-specific docs
+            // Individual: CIN + facture STEG
+            var $cr = $('input[name="cin_recto"]');
+            if ($cr.length && (!$cr[0].files || !$cr[0].files.length)) {
+              errors.push('La CIN recto est obligatoire.');
+            }
+            var $cv = $('input[name="cin_verso"]');
+            if ($cv.length && (!$cv[0].files || !$cv[0].files.length)) {
+              errors.push('La CIN verso est obligatoire.');
+            }
+            var $fs = $('input[name="facture_steg"]');
+            if ($fs.length && (!$fs[0].files || !$fs[0].files.length)) {
+              errors.push('La facture STEG / SONEDE est obligatoire.');
+            }
             if (PF.isRetired) {
-              var $att = $('input[name=attestation_retraite]');
-              if (!$att[0].files || !$att[0].files.length) {
+              var $att = $('input[name="attestation_retraite"]');
+              if ($att.length && (!$att[0].files || !$att[0].files.length)) {
                 errors.push("L'attestation de retraite est obligatoire.");
               }
             } else {
               var $fp = $('input[name="fiche_paie[]"]').first();
-              if (!$fp[0].files || !$fp[0].files.length) {
+              if ($fp.length && (!$fp[0].files || !$fp[0].files.length)) {
                 errors.push('Au moins une fiche de paie est obligatoire.');
               }
             }
