@@ -83,6 +83,13 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $birthday = $this->context->customer->birthday;
         }
 
+        // Read and clear the error cookie so JS can display it
+        $errors_json = '';
+        if (!empty($this->context->cookie->pf_errors)) {
+            $errors_json = $this->context->cookie->pf_errors;
+            unset($this->context->cookie->pf_errors);
+        }
+
         $this->context->smarty->assign([
             'pf_id_order'             => $id_order,
             'pf_id_cart'              => $id_cart,
@@ -99,6 +106,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'customer_firstname'      => $this->context->customer->firstname,
             'customer_lastname'       => $this->context->customer->lastname,
             'customer_email'          => $this->context->customer->email,
+            'pf_errors_json'          => $errors_json,
         ]);
 
         $this->setTemplate('module:paiementfacilite/views/templates/front/request.tpl');

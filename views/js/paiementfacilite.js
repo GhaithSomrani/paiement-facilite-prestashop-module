@@ -14,6 +14,8 @@
     selectedAddressId: 0,
   };
 
+  var DRAFT_KEY = 'pf_draft';
+
   $(document).ready(function () {
     initErrors();
     initTypePicker();
@@ -23,6 +25,7 @@
     initDocumentUploads();
     initNavButtons();
     initAddressModal();
+    initDraft();
     updateProgressBar();
   });
 
@@ -273,20 +276,20 @@
   function initNavButtons() {
     $(document).on('click', '.pf-next-btn', function () {
       if (!validateStep(PF.currentStep)) return;
-      // Partner org: jump from step 2 straight to step 5
-      if (PF.belongsToPartner && PF.currentStep === 2) {
-        goTo(5);
-      } else {
-        goTo(PF.currentStep + 1);
-      }
+      var nextStep = (PF.belongsToPartner && PF.currentStep === 2) ? 5 : PF.currentStep + 1;
+      saveDraft(nextStep);
+      goTo(nextStep);
     });
     $(document).on('click', '.pf-prev-btn', function () {
-      // Partner org: jump back from step 5 straight to step 2
       if (PF.belongsToPartner && PF.currentStep === 5) {
         goTo(2);
       } else {
         goTo(PF.currentStep - 1);
       }
+    });
+    // Clear draft on final submission
+    $('#pf-form').on('submit', function () {
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
     });
   }
 
@@ -468,6 +471,158 @@
         $errBox.text('Erreur de connexion. Veuillez réessayer.').show();
       });
     });
+  }
+
+  /* ── Draft save / restore (localStorage) ── */
+
+  function initDraft() {
+    // Clear any draft when the user lands on the confirmation page
+    if (window.location.search.indexOf('confirmed=1') !== -1) {
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      return;
+    }
+    if (typeof PF_CONFIG === 'undefined') return;
+    var raw;
+    try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) { return; }
+    if (!raw) return;
+    try {
+      var draft = JSON.parse(raw);
+      if (draft && parseInt(draft.current_step) > 1) {
+        showDraftBanner(draft);
+      } else {
+        localStorage.removeItem(DRAFT_KEY);
+      }
+    } catch (e) {
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e2) {}
+    }
+  }
+
+  function showDraftBanner(draft) {
+    var $banner = $('#pf-draft-banner');
+    if (!$banner.length) return;
+    $banner.find('.pf-draft-step').text(draft.current_step);
+    $banner.show();
+
+    $('#pf-resume-btn').on('click', function () {
+      restoreDraft(draft);
+      $banner.slideUp();
+    });
+
+    $('#pf-restart-btn').on('click', function () {
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      $banner.slideUp();
+    });
+  }
+
+  function saveDraft(nextStep) {
+    var data = {
+      current_step:          nextStep,
+      is_company:            $('input[name=is_company]:checked').val()  || '0',
+      is_retired:            $('input[name=is_retired]:checked').val()   || '0',
+      belongs_to_partner:    $('#pf_belongs_to_partner').val()           || '0',
+      id_organisation:       $('#pf-org-select').val()                   || '0',
+      organisation_autre:    $('#pf-org-autre').val()                    || '',
+      id_address:            $('#pf_id_address_hidden').val()            || '0',
+      date_naissance:        $('#pf-date-naissance').val()               || '',
+      cin:                   $('#pf-cin').val()                          || '',
+      fonction:              $('#pf-fonction').val()                     || '',
+      raison_sociale:        $('#pf-raison-sociale').val()               || '',
+      representant_legal:    $('#pf-representant-legal').val()           || '',
+      date_naissance_gerant: $('#pf-date-naissance-gerant').val()        || '',
+      telephone_gerant:      $('#pf-telephone-gerant').val()             || '',
+      email_gerant:          $('#pf-email-gerant').val()                 || '',
+      cin_gerant:            $('#pf-cin-gerant').val()                   || '',
+      credit_amount:         $('#pf-credit-slider').val()                || '0',
+      premiere_tranche:      $('#pf-tranche').val()                      || '0',
+      nb_mois:               $('input[name=nb_mois]:checked').val()      || '6',
+      mensualite:            $('#pf-mensualite').val()                   || '0',
+      commentaire:           $('#pf-commentaire').val()                  || '',
+    };
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch (e) {}
+  }
+
+  function restoreDraft(draft) {
+    PF.isCompany        = draft.is_company == 1;
+    PF.isRetired        = draft.is_retired == 1;
+    PF.belongsToPartner = draft.belongs_to_partner == 1;
+
+    // Step 1 — client type
+    var typeVal = PF.isCompany ? '1' : '0';
+    $('input[name=is_company][value="' + typeVal + '"]').prop('checked', true);
+    $('.pf-client-card').removeClass('is-selected');
+    $('.pf-client-card[data-value="' + typeVal + '"]').addClass('is-selected');
+    toggleRetiredBlock();
+    toggleCompanyFields();
+
+    if (!PF.isCompany) {
+      var retiredVal = PF.isRetired ? '1' : '0';
+      $('input[name=is_retired][value="' + retiredVal + '"]').prop('checked', true);
+      $('input[name=is_retired]').closest('.pf-toggle-row').find('.pf-toggle-btn').removeClass('is-selected');
+      $('input[name=is_retired][value="' + retiredVal + '"]').closest('.pf-toggle-btn').addClass('is-selected');
+    }
+    toggleDocBlocks();
+
+    // Step 2 — organisation
+    var orgVal = draft.id_organisation || '0';
+    $('#pf-org-select').val(orgVal);
+    if (orgVal == '-1') {
+      $('#pf-org-autre-block').show();
+      $('#pf-org-autre').val(draft.organisation_autre || '');
+      $('#pf-partner-notice').hide();
+      PF.belongsToPartner = false;
+    } else if (parseInt(orgVal) > 0) {
+      $('#pf-org-autre-block').hide();
+      $('#pf-partner-notice').show();
+      PF.belongsToPartner = true;
+    } else {
+      $('#pf-org-autre-block').hide();
+      $('#pf-partner-notice').hide();
+      PF.belongsToPartner = false;
+    }
+    $('#pf_belongs_to_partner').val(PF.belongsToPartner ? '1' : '0');
+    updatePartnerNavigation();
+    updateDocsStep();
+
+    // Step 3 — address
+    var addrId = parseInt(draft.id_address) || 0;
+    if (addrId > 0) {
+      $('#pf-address-select').val(addrId);
+      PF.selectedAddressId = addrId;
+      $('#pf_id_address_hidden').val(addrId);
+      PF_CONFIG.hasAddresses = true;
+    }
+
+    // Step 4 — personal / company fields
+    if (draft.date_naissance)        $('#pf-date-naissance').val(draft.date_naissance);
+    if (draft.cin)                    $('#pf-cin').val(draft.cin);
+    if (draft.fonction)               $('#pf-fonction').val(draft.fonction);
+    if (draft.raison_sociale)         $('#pf-raison-sociale').val(draft.raison_sociale);
+    if (draft.representant_legal)     $('#pf-representant-legal').val(draft.representant_legal);
+    if (draft.date_naissance_gerant)  $('#pf-date-naissance-gerant').val(draft.date_naissance_gerant);
+    if (draft.telephone_gerant)       $('#pf-telephone-gerant').val(draft.telephone_gerant);
+    if (draft.email_gerant)           $('#pf-email-gerant').val(draft.email_gerant);
+    if (draft.cin_gerant)             $('#pf-cin-gerant').val(draft.cin_gerant);
+
+    // Step 5 — credit
+    if (parseFloat(draft.credit_amount) > 0) {
+      $('#pf-credit-slider').val(draft.credit_amount);
+    }
+    if (parseFloat(draft.premiere_tranche) > 0) {
+      $('#pf-tranche').val(draft.premiere_tranche).data('user-edited', true);
+    }
+    var nbMois = parseInt(draft.nb_mois) || 6;
+    $('input[name=nb_mois]').prop('checked', false);
+    $('input[name=nb_mois][value="' + nbMois + '"]').prop('checked', true);
+    $('#pf-mois-row .pf-toggle-btn').removeClass('is-selected');
+    $('input[name=nb_mois][value="' + nbMois + '"]').closest('.pf-toggle-btn').addClass('is-selected');
+    if (draft.commentaire) $('#pf-commentaire').val(draft.commentaire);
+
+    // Trigger slider recalculation
+    $('#pf-credit-slider').trigger('change');
+
+    // Jump to the saved step
+    var step = parseInt(draft.current_step) || 1;
+    if (step > 1) goTo(step);
   }
 
   /* ── Alert helpers ── */

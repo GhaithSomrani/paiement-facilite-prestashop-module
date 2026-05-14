@@ -7,6 +7,25 @@
 {block name='page_content'}
 <div class="pf-wrapper">
 
+  {* ── Draft resume banner (shown by JS when localStorage draft exists) ── *}
+  <div id="pf-draft-banner" style="display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:14px 18px;margin-bottom:20px;display:none;">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+      <span style="font-size:14px;">
+        {l s='Vous avez une demande en cours (étape' mod='paiementfacilite'}
+        <strong class="pf-draft-step">?</strong>/6).
+        {l s='Voulez-vous reprendre là où vous vous êtes arrêté ?' mod='paiementfacilite'}
+      </span>
+      <span style="display:flex;gap:10px;align-items:center;">
+        <button type="button" id="pf-resume-btn" class="pf-btn-next" style="font-size:13px;padding:6px 16px;">
+          {l s='Reprendre' mod='paiementfacilite'}
+        </button>
+        <button type="button" id="pf-restart-btn" style="background:none;border:none;color:#999;font-size:12px;cursor:pointer;text-decoration:underline;">
+          {l s='Recommencer' mod='paiementfacilite'}
+        </button>
+      </span>
+    </div>
+  </div>
+
   {* ── Progress stepper ── *}
   <div class="pf-stepper">
     <div class="pf-step active" data-step="1"><span class="pf-step-num">1</span><small>{l s='Type' mod='paiementfacilite'}</small></div>
@@ -444,6 +463,7 @@ var PF_CONFIG = {
   maxAmount:      {$pf_max_amount|floatval},
   isFromCheckout: {if $pf_is_from_checkout}true{else}false{/if},
   hasAddresses:   {if $pf_addresses}true{else}false{/if},
+  errorsJson:     {if $pf_errors_json}'{$pf_errors_json|escape:'javascript'}'{else}null{/if},
 };
 </script>
 
