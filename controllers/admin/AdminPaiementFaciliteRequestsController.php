@@ -369,237 +369,250 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
 
     public function renderForm()
     {
-        // Customer list for dropdown
-        $raw_customers = Customer::getCustomers(true);
-        $customers = [];
-        foreach ($raw_customers as $c) {
-            $customers[] = [
-                'id_customer' => (int) $c['id_customer'],
-                'name'        => $c['firstname'] . ' ' . $c['lastname'] . ' (' . $c['email'] . ')',
-            ];
-        }
+        /** @var PaiementFaciliteRequest $obj */
+        $obj    = $this->loadObject(true);
+        $is_add = !Validate::isLoadedObject($obj);
 
-        // Organisation list
         $orgs = [['id_organisation' => 0, 'name' => $this->l('— Aucun —')]];
         foreach (PaiementFaciliteOrganisation::getActiveOrganisations() as $o) {
             $orgs[] = $o;
         }
 
-        $this->fields_form = [
-            'legend' => [
-                'title' => $this->l('Demande de paiement par facilité'),
-                'icon'  => 'icon-file-text',
-            ],
-            'input' => [
-                // ── Identification ──
-                [
-                    'type'     => 'select',
-                    'label'    => $this->l('Client'),
-                    'name'     => 'id_customer',
-                    'required' => true,
-                    'options'  => [
-                        'query' => $customers,
-                        'id'    => 'id_customer',
-                        'name'  => 'name',
-                    ],
-                ],
-                [
-                    'type'     => 'text',
-                    'label'    => $this->l('ID Adresse'),
-                    'name'     => 'id_address',
-                    'required' => true,
-                    'hint'     => $this->l('Identifiant numérique de l\'adresse du client (ps_address.id_address).'),
-                    'col'      => 3,
-                ],
-                // ── Type de client ──
-                [
-                    'type'   => 'radio',
-                    'label'  => $this->l('Type de client'),
-                    'name'   => 'is_company',
-                    'required' => true,
-                    'values' => [
-                        ['id' => 'ic0', 'value' => 0, 'label' => $this->l('Salarié / Retraité')],
-                        ['id' => 'ic1', 'value' => 1, 'label' => $this->l('Société')],
-                    ],
-                ],
-                [
-                    'type'   => 'radio',
-                    'label'  => $this->l('Retraité'),
-                    'name'   => 'is_retired',
-                    'values' => [
-                        ['id' => 'ir0', 'value' => 0, 'label' => $this->l('Non')],
-                        ['id' => 'ir1', 'value' => 1, 'label' => $this->l('Oui')],
-                    ],
-                ],
-                // ── Organisme ──
-                [
-                    'type'   => 'switch',
-                    'label'  => $this->l('Organisme partenaire'),
-                    'name'   => 'belongs_to_partner',
-                    'values' => [
-                        ['id' => 'bp1', 'value' => 1, 'label' => $this->l('Oui')],
-                        ['id' => 'bp0', 'value' => 0, 'label' => $this->l('Non')],
-                    ],
-                ],
-                [
-                    'type'    => 'select',
-                    'label'   => $this->l('Organisme'),
-                    'name'    => 'id_organisation',
-                    'options' => [
-                        'query' => $orgs,
-                        'id'    => 'id_organisation',
-                        'name'  => 'name',
-                    ],
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Organisme (autre)'),
-                    'name'  => 'organisation_autre',
-                    'hint'  => $this->l('Remplir si l\'organisme n\'est pas dans la liste.'),
-                ],
-                // ── Infos personnelles (individuel) ──
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Date de naissance'),
-                    'name'  => 'date_naissance',
-                    'hint'  => 'AAAA-MM-JJ',
-                    'col'   => 3,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('CIN'),
-                    'name'  => 'cin',
-                    'col'   => 3,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Fonction / Profession'),
-                    'name'  => 'fonction',
-                ],
-                // ── Infos société ──
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Raison sociale'),
-                    'name'  => 'raison_sociale',
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Matricule fiscal'),
-                    'name'  => 'matricule_fiscal',
-                    'col'   => 4,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Représentant légal'),
-                    'name'  => 'representant_legal',
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Date de naissance gérant'),
-                    'name'  => 'date_naissance_gerant',
-                    'hint'  => 'AAAA-MM-JJ',
-                    'col'   => 3,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('CIN gérant'),
-                    'name'  => 'cin_gerant',
-                    'col'   => 3,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Téléphone gérant'),
-                    'name'  => 'telephone_gerant',
-                    'col'   => 3,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Email gérant'),
-                    'name'  => 'email_gerant',
-                    'col'   => 4,
-                ],
-                // ── Détails du crédit ──
-                [
-                    'type'     => 'text',
-                    'label'    => $this->l('Montant du crédit (DT)'),
-                    'name'     => 'credit_amount',
-                    'required' => true,
-                    'col'      => 3,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('1ère tranche (DT)'),
-                    'name'  => 'premiere_tranche',
-                    'col'   => 3,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Mensualité (DT)'),
-                    'name'  => 'mensualite',
-                    'hint'  => $this->l('Calculée automatiquement si laissée à 0.'),
-                    'col'   => 3,
-                ],
-                [
-                    'type'  => 'text',
-                    'label' => $this->l('Nombre de mensualités'),
-                    'name'  => 'nb_mois',
-                    'hint'  => $this->l('Entre 2 et 12.'),
-                    'col'   => 2,
-                ],
-                [
-                    'type'  => 'textarea',
-                    'label' => $this->l('Commentaire'),
-                    'name'  => 'commentaire',
-                    'rows'  => 4,
-                ],
-                // ── Statut ──
-                [
-                    'type'     => 'select',
-                    'label'    => $this->l('Statut'),
-                    'name'     => 'status',
-                    'required' => true,
-                    'options'  => [
-                        'query' => [
-                            ['id' => 'pending',  'name' => $this->l('En attente')],
-                            ['id' => 'approved', 'name' => $this->l('Approuvé')],
-                            ['id' => 'rejected', 'name' => $this->l('Rejeté')],
-                        ],
-                        'id'   => 'id',
-                        'name' => 'name',
-                    ],
-                ],
-            ],
-            'submit' => [
-                'title' => $this->l('Enregistrer'),
-            ],
-        ];
+        $pf_customer  = null;
+        $pf_addresses = [];
+        if (!$is_add && $obj->id_customer) {
+            $pf_customer = new Customer((int) $obj->id_customer);
+            if (!Validate::isLoadedObject($pf_customer)) {
+                $pf_customer = null;
+            } else {
+                $pf_addresses = $pf_customer->getAddresses((int) $this->context->language->id);
+            }
+        }
 
-        return parent::renderForm();
+        $this->context->smarty->assign([
+            'pf_obj'           => $obj,
+            'pf_is_add'        => $is_add,
+            'pf_organisations' => $orgs,
+            'pf_customer'      => $pf_customer,
+            'pf_addresses'     => $pf_addresses,
+            'pf_docs'          => $is_add ? [] : $obj->getDocuments(),
+            'doc_labels'       => $this->getDocLabels(),
+            'pf_form_action'   => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_back_url'      => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_ajax_url'      => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+        ]);
+
+        return $this->context->smarty->fetch(
+            _PS_MODULE_DIR_ . 'paiementfacilite/views/templates/admin/request_form.tpl'
+        );
     }
 
     public function processSave()
     {
-        // Auto-calculate mensualite if not provided
-        $credit    = (float) Tools::getValue('credit_amount');
-        $tranche   = (float) Tools::getValue('premiere_tranche');
-        $nb_mois   = (int)   Tools::getValue('nb_mois');
-
+        $nb_mois = (int) Tools::getValue('nb_mois');
         if ($nb_mois < 2 || $nb_mois > 12) {
-            $nb_mois = 6;
-            $_POST['nb_mois'] = $nb_mois;
+            $_POST['nb_mois'] = 6;
         }
 
-        $mensualite = (float) Tools::getValue('mensualite');
-        if ($mensualite <= 0 && $credit > 0 && $tranche < $credit && $nb_mois > 0) {
-            $_POST['mensualite'] = round(($credit - $tranche) / $nb_mois, 2);
+        $credit  = (float) Tools::getValue('credit_amount');
+        $tranche = (float) Tools::getValue('premiere_tranche');
+        $nb      = (int) ($_POST['nb_mois'] ?? $nb_mois);
+        if ((float) Tools::getValue('mensualite') <= 0 && $credit > 0 && $tranche < $credit && $nb > 0) {
+            $_POST['mensualite'] = round(($credit - $tranche) / $nb, 2);
         }
 
-        // Nullify empty optional ints so ObjectModel doesn't store 0
-        if (!Tools::getValue('id_organisation')) {
+        if (!(int) Tools::getValue('id_organisation')) {
             $_POST['id_organisation'] = null;
         }
 
         parent::processSave();
+    }
+
+    public function processAdd()
+    {
+        $result = parent::processAdd();
+        if ($result && Validate::isLoadedObject($this->object)) {
+            $this->saveDocuments((int) $this->object->id);
+        }
+        return $result;
+    }
+
+    public function processUpdate()
+    {
+        $result = parent::processUpdate();
+        if ($result !== false && Validate::isLoadedObject($this->object)) {
+            $this->saveDocuments((int) $this->object->id);
+        }
+        return $result;
+    }
+
+    private function saveDocuments($id_request)
+    {
+        $is_company = (bool) $this->object->is_company;
+        $is_retired = (bool) $this->object->is_retired;
+
+        if ($is_company) {
+            $singles = [
+                'copie_rne'        => PaiementFaciliteDocument::TYPE_COPIE_RNE,
+                'cin_gerant_recto' => PaiementFaciliteDocument::TYPE_CIN_RECTO,
+                'cin_gerant_verso' => PaiementFaciliteDocument::TYPE_CIN_VERSO,
+                'rib'              => PaiementFaciliteDocument::TYPE_RIB,
+            ];
+        } else {
+            $singles = [
+                'cin_recto'    => PaiementFaciliteDocument::TYPE_CIN_RECTO,
+                'cin_verso'    => PaiementFaciliteDocument::TYPE_CIN_VERSO,
+                'facture_steg' => PaiementFaciliteDocument::TYPE_FACTURE_STEG,
+                'rib'          => PaiementFaciliteDocument::TYPE_RIB,
+            ];
+            if ($is_retired) {
+                $singles['attestation_retraite'] = PaiementFaciliteDocument::TYPE_ATTESTATION;
+            }
+        }
+
+        foreach ($singles as $input => $type) {
+            if (!empty($_FILES[$input]['name']) && $_FILES[$input]['error'] === UPLOAD_ERR_OK) {
+                PaiementFaciliteDocument::saveUpload($id_request, $type, $_FILES[$input]);
+            }
+        }
+
+        if (!$is_company && !$is_retired && !empty($_FILES['fiche_paie']['name'])) {
+            $this->saveMultiDoc($id_request, 'fiche_paie', PaiementFaciliteDocument::TYPE_FICHE_PAIE, 3);
+        }
+
+        if (!empty($_FILES['releve_bancaire']['name'])) {
+            $this->saveMultiDoc($id_request, 'releve_bancaire', PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE, 3);
+        }
+    }
+
+    private function saveMultiDoc($id_request, $input_name, $doc_type, $max)
+    {
+        if (empty($_FILES[$input_name]['name']) || !is_array($_FILES[$input_name]['name'])) {
+            return;
+        }
+        $count = 0;
+        foreach ($_FILES[$input_name]['name'] as $i => $name) {
+            if ($count >= $max) {
+                break;
+            }
+            if (!empty($name) && $_FILES[$input_name]['error'][$i] === UPLOAD_ERR_OK) {
+                PaiementFaciliteDocument::saveUpload($id_request, $doc_type, [
+                    'name'     => $name,
+                    'tmp_name' => $_FILES[$input_name]['tmp_name'][$i],
+                    'error'    => $_FILES[$input_name]['error'][$i],
+                    'size'     => $_FILES[$input_name]['size'][$i],
+                ]);
+                ++$count;
+            }
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // AJAX ENDPOINTS
+    // -------------------------------------------------------------------------
+
+    public function ajaxProcessSearchCustomers()
+    {
+        $q = trim(Tools::getValue('q', ''));
+        if (Tools::strlen($q) < 2) {
+            die(json_encode([]));
+        }
+        $like = '%' . pSQL($q) . '%';
+        $rows = Db::getInstance()->executeS(
+            'SELECT c.id_customer, c.firstname, c.lastname, c.email,
+                    (SELECT a.phone FROM `' . _DB_PREFIX_ . 'address` a
+                     WHERE a.id_customer = c.id_customer AND a.deleted = 0
+                     LIMIT 1) AS phone
+             FROM `' . _DB_PREFIX_ . 'customer` c
+             WHERE c.deleted = 0 AND c.active = 1
+               AND (c.firstname LIKE \'' . $like . '\'
+                 OR c.lastname  LIKE \'' . $like . '\'
+                 OR c.email     LIKE \'' . $like . '\'
+                 OR CONCAT(c.firstname,\' \',c.lastname) LIKE \'' . $like . '\')
+             ORDER BY c.lastname ASC
+             LIMIT 20'
+        );
+
+        $out = [];
+        foreach ($rows as $r) {
+            $out[] = [
+                'id'    => (int) $r['id_customer'],
+                'label' => $r['firstname'] . ' ' . $r['lastname'] . ' — ' . $r['email']
+                           . ($r['phone'] ? ' — ' . $r['phone'] : ''),
+                'name'  => $r['firstname'] . ' ' . $r['lastname'],
+                'email' => $r['email'],
+            ];
+        }
+        die(json_encode($out));
+    }
+
+    public function ajaxProcessGetCustomerAddresses()
+    {
+        $id_customer = (int) Tools::getValue('id_customer');
+        if (!$id_customer) {
+            die(json_encode([]));
+        }
+        $customer = new Customer($id_customer);
+        if (!Validate::isLoadedObject($customer)) {
+            die(json_encode([]));
+        }
+        $addresses = $customer->getAddresses((int) $this->context->language->id);
+        $out = [];
+        foreach ($addresses as $a) {
+            $out[] = [
+                'id_address' => (int) $a['id_address'],
+                'label'      => $a['alias'] . ' — ' . $a['address1'] . ', ' . $a['city'],
+            ];
+        }
+        die(json_encode($out));
+    }
+
+    public function ajaxProcessSaveNewAddress()
+    {
+        $id_customer = (int) Tools::getValue('id_customer');
+        if (!$id_customer) {
+            die(json_encode(['success' => false, 'error' => 'Client invalide.']));
+        }
+        $customer = new Customer($id_customer);
+        if (!Validate::isLoadedObject($customer)) {
+            die(json_encode(['success' => false, 'error' => 'Client introuvable.']));
+        }
+
+        $alias     = trim(Tools::getValue('alias', ''));
+        $firstname = trim(Tools::getValue('firstname', ''));
+        $lastname  = trim(Tools::getValue('lastname', ''));
+        $address1  = trim(Tools::getValue('address1', ''));
+        $postcode  = trim(Tools::getValue('postcode', ''));
+        $city      = trim(Tools::getValue('city', ''));
+
+        if (!$alias || !$firstname || !$lastname || !$address1 || !$postcode || !$city) {
+            die(json_encode(['success' => false, 'error' => 'Champs obligatoires manquants.']));
+        }
+
+        $address              = new Address();
+        $address->id_customer = $id_customer;
+        $address->alias       = pSQL($alias);
+        $address->firstname   = pSQL($firstname);
+        $address->lastname    = pSQL($lastname);
+        $address->address1    = pSQL($address1);
+        $address->postcode    = pSQL($postcode);
+        $address->city        = pSQL($city);
+        $address->phone       = pSQL(trim(Tools::getValue('phone', '')));
+        $address->id_country  = (int) Configuration::get('PS_COUNTRY_DEFAULT');
+
+        if (!$address->add()) {
+            die(json_encode(['success' => false, 'error' => 'Erreur lors de la sauvegarde.']));
+        }
+
+        $addresses = $customer->getAddresses((int) $this->context->language->id);
+        $out = [];
+        foreach ($addresses as $a) {
+            $out[] = [
+                'id_address' => (int) $a['id_address'],
+                'label'      => $a['alias'] . ' — ' . $a['address1'] . ', ' . $a['city'],
+            ];
+        }
+        die(json_encode(['success' => true, 'id_address' => (int) $address->id, 'addresses' => $out]));
     }
 
     // -------------------------------------------------------------------------

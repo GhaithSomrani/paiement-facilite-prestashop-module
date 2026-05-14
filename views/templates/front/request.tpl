@@ -6,9 +6,6 @@
 
 {block name='page_content'}
   <div class="pf-wrapper">
-    {if $pf_is_from_checkout}
-      <p>test test test</p>
-    {/if}
     {* ── Draft resume banner (shown by JS when localStorage draft exists) ── *}
     <div id="pf-draft-banner"
       style="display:none;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;padding:14px 18px;margin-bottom:20px;display:none;">
