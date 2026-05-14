@@ -34,13 +34,13 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
                 'title'      => $this->l('Client'),
                 'filter_key' => 'c!lastname',
             ],
-            'client_type_label' => [
+            'is_company' => [
                 'title'    => $this->l('Type client'),
                 'callback' => 'renderClientType',
                 'filter_key' => 'a!is_company',
                 'align'    => 'center',
             ],
-            'organisation_display' => [
+            'organisation_name' => [
                 'title'    => $this->l('Organisme'),
                 'callback' => 'renderOrganisation',
             ],
@@ -50,7 +50,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
                 'align'    => 'right',
                 'filter_key' => 'a!credit_amount',
             ],
-            'order_link' => [
+            'linked_order_id' => [
                 'title'    => $this->l('Commande'),
                 'callback' => 'renderOrderLink',
                 'orderby'  => false,
@@ -69,6 +69,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
                 'badge_danger'  => ['rejected'],
                 'filter_key'    => 'a!status',
             ],
+
             'date_add' => [
                 'title'      => $this->l('Date'),
                 'type'       => 'datetime',
@@ -142,8 +143,12 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
     {
         $id_order = (int) $row['linked_order_id'];
         if ($id_order) {
-            $url = $this->context->link->getAdminLink('AdminOrders') . '&vieworder&id_order=' . $id_order;
-            return '<a href="' . $url . '" target="_blank">#' . $id_order . ' <i class="icon-external-link"></i></a>';
+
+            $orderLink = Context::getContext()->link->getAdminLink('AdminOrders', true, [], [
+                'id_order' => $id_order,
+                'vieworder' => 1
+            ]);
+            return '<a href="' . $orderLink . '" target="_blank">#' . $id_order . ' <i class="icon-external-link"></i></a>';
         }
         return '<em>' . $this->l('Aucune') . '</em>';
     }
