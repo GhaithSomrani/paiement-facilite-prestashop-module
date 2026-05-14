@@ -41,17 +41,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             return;
         }
 
-        // Detect context: coming from checkout or standalone
+        // Detect context
         $id_order = (int) Tools::getValue('id_order');
         $id_cart  = (int) $this->context->cart->id;
-
-        // Try to derive order from active cart if coming from payment step
-        if (!$id_order && $id_cart) {
-            $order_id_from_cart = Order::getIdByCartId($id_cart);
-            if ($order_id_from_cart) {
-                $id_order = (int) $order_id_from_cart;
-            }
-        }
 
         // Addresses
         $id_lang      = (int) $this->context->language->id;
@@ -59,11 +51,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $addresses    = $this->context->customer->getAddresses($id_lang);
         $selected_address_id = 0;
 
-        if ($id_order) {
-            $order = new Order($id_order);
-            if (Validate::isLoadedObject($order) && (int) $order->id_customer === $id_customer) {
-                $selected_address_id = (int) $order->id_address_invoice;
-            }
+        // Pre-select invoice address from the active cart
+        if ($id_cart && (int) $this->context->cart->id_address_invoice) {
+            $selected_address_id = (int) $this->context->cart->id_address_invoice;
         }
 
         if (!$selected_address_id && !empty($addresses)) {
@@ -76,6 +66,41 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // Credit limits
         $min_amount = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
         $max_amount = (float) (Configuration::get('PF_MAX_AMOUNT') ?: 3000);
+
+        // Load cart products for checkout context
+        $order_items  = [];
+        $order_fees   = [];
+        $order_amount = 0.0;
+
+        if ($id_cart) {
+            $active_cart = $this->context->cart;
+            if ($active_cart && $active_cart->id && $active_cart->nbProducts() > 0) {
+                foreach ($active_cart->getProducts() as $p) {
+                    $order_items[] = [
+                        'name'  => $p['name'],
+                        'qty'   => (int) $p['quantity'],
+                        'unit'  => (float) $p['price_wt'],
+                        'total' => (float) ($p['price_wt'] * $p['quantity']),
+                    ];
+                }
+                $order_amount = (float) $active_cart->getOrderTotal(true, Cart::BOTH);
+
+                // Additional fees
+                $order_fees = [];
+                $shipping = (float) $active_cart->getOrderTotal(true, Cart::ONLY_SHIPPING);
+                if ($shipping > 0) {
+                    $order_fees[] = ['label' => $this->module->l('Frais de livraison'), 'amount' => $shipping, 'sign' => 1];
+                }
+                $discount = (float) $active_cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS);
+                if ($discount > 0) {
+                    $order_fees[] = ['label' => $this->module->l('Remise'), 'amount' => $discount, 'sign' => -1];
+                }
+                $wrapping = (float) $active_cart->getOrderTotal(true, Cart::ONLY_WRAPPING);
+                if ($wrapping > 0) {
+                    $order_fees[] = ['label' => $this->module->l('Emballage cadeau'), 'amount' => $wrapping, 'sign' => 1];
+                }
+            }
+        }
 
         // Pre-fill birthday from customer profile
         $birthday = '';
@@ -98,11 +123,14 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'pf_organisations'        => $organisations,
             'pf_min_amount'           => $min_amount,
             'pf_max_amount'           => $max_amount,
-            'pf_default_amount'       => 1150,
+            'pf_default_amount'       => $order_amount ?: 1150,
+            'pf_order_items'          => $order_items,
+            'pf_order_fees'           => $order_fees,
+            'pf_order_amount'         => $order_amount,
             'pf_birthday'             => $birthday,
             'pf_form_action'          => $this->context->link->getModuleLink('paiementfacilite', 'request', [], true),
             'pf_ajax_url'             => $this->context->link->getModuleLink('paiementfacilite', 'request', ['ajax' => 1], true),
-            'pf_is_from_checkout'     => (bool) $id_order,
+            'pf_is_from_checkout'     => $order_amount > 0,
             'customer_firstname'      => $this->context->customer->firstname,
             'customer_lastname'       => $this->context->customer->lastname,
             'customer_email'          => $this->context->customer->email,
@@ -218,7 +246,6 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // --- Credit details ---
-        $credit_amount    = (float) Tools::getValue('credit_amount');
         $premiere_tranche = (float) Tools::getValue('premiere_tranche');
         $nb_mois          = (int) Tools::getValue('nb_mois') ?: 12;
         $commentaire      = Tools::getValue('commentaire');
@@ -227,11 +254,25 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $nb_mois = 6;
         }
 
-        $min_amount = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
-        $max_amount = (float) (Configuration::get('PF_MAX_AMOUNT') ?: 3000);
+        // When initiated from checkout, lock credit_amount to the cart total
+        $credit_amount  = 0.0;
+        $id_cart_posted = (int) Tools::getValue('id_cart');
 
-        if ($credit_amount < $min_amount || $credit_amount > $max_amount) {
-            $errors[] = $this->module->l('Montant du crédit invalide.');
+        if ($id_cart_posted) {
+            $submitted_cart = new Cart($id_cart_posted);
+            if (Validate::isLoadedObject($submitted_cart) && (int) $submitted_cart->id_customer === $id_customer) {
+                $credit_amount = (float) $submitted_cart->getOrderTotal(true, Cart::BOTH);
+            }
+        }
+
+        // Standalone request: read and validate freely
+        if ($credit_amount <= 0) {
+            $credit_amount = (float) Tools::getValue('credit_amount');
+            $min_amount    = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
+            $max_amount    = (float) (Configuration::get('PF_MAX_AMOUNT') ?: 3000);
+            if ($credit_amount < $min_amount || $credit_amount > $max_amount) {
+                $errors[] = $this->module->l('Montant du crédit invalide.');
+            }
         }
 
         $min_tranche = round($credit_amount * 0.20, 2);

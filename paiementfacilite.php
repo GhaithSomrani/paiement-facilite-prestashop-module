@@ -297,17 +297,27 @@ class PaiementFacilite extends PaymentModule
             return [];
         }
 
+        $id_cart = $params['cart']->id;
         $option = new PrestaShop\PrestaShop\Core\Payment\PaymentOption();
         $option->setCallToActionText($this->l('Paiement par facilité / traite'));
-        $option->setAction($this->context->link->getModuleLink($this->name, 'request', [], true));
+        $option->setAction($this->context->link->getModuleLink($this->name, 'request', ['id_cart' => $id_cart], true));
+
+
         $option->setAdditionalInformation(
-            $this->context->smarty->fetch('module:paiementfacilite/views/templates/hook/payment_info.tpl')
+            $this->context->smarty->fetch('module:paiementfacilite/views/templates/hook/payment_info.tpl', [
+                'min_amount' => Configuration::get('PF_MIN_AMOUNT') ?: 300,
+                'max_amount' => Configuration::get('PF_MAX_AMOUNT') ?: 3000,
+            ])
         );
 
         if (file_exists($this->local_path . 'logo.png')) {
             $option->setLogo(Media::getMediaPath($this->local_path . 'logo.png'));
         }
-
+        $cart = new Cart($id_cart);
+        $minprice = Configuration::get('PF_MIN_AMOUNT') ?: 300;
+        if ($cart->getOrderTotal(true, Cart::BOTH) < $minprice) {
+            return [];
+        }
         return [$option];
     }
 

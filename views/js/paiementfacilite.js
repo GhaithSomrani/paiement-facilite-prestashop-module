@@ -357,7 +357,8 @@
       case 5:
         var amount  = parseFloat($('#pf-credit-slider').val()) || 0;
         var tranche = parseFloat($('#pf-tranche').val()) || 0;
-        if (amount < PF_CONFIG.minAmount || amount > PF_CONFIG.maxAmount) {
+        // Only check min/max range for standalone (free-slider) requests
+        if (!PF_CONFIG.isFromCheckout && (amount < PF_CONFIG.minAmount || amount > PF_CONFIG.maxAmount)) {
           errors.push('Le montant doit être entre ' + PF_CONFIG.minAmount + ' DT et ' + PF_CONFIG.maxAmount + ' DT.');
         }
         if (tranche < amount * 0.20 - 0.01) {
