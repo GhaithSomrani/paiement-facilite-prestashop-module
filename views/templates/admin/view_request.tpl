@@ -7,13 +7,8 @@
       <i class="process-icon-back"></i> {l s='Retour à la liste' mod='paiementfacilite'}
     </a>
     &nbsp;
-    <span class="pf-status-badge pf-status-{$pf_request->status|escape:'html'}">
-      {if $pf_request->status == 'pending'}{l s='En attente' mod='paiementfacilite'}
-      {elseif $pf_request->status == 'approved_mode'}{l s='Validé par La Mode' mod='paiementfacilite'}
-      {elseif $pf_request->status == 'rejected_mode'}{l s='Rejeté par La Mode' mod='paiementfacilite'}
-      {elseif $pf_request->status == 'approved_emp'}{l s="Validé par l'employeur" mod='paiementfacilite'}
-      {elseif $pf_request->status == 'rejected_emp'}{l s="Rejeté par l'employeur" mod='paiementfacilite'}
-      {/if}
+    <span class="pf-status-badge" style="background:{$pf_status_color|escape:'html'};">
+      {$pf_status_name|escape:'html'}
     </span>
 
     {if $pf_request->status == 'pending'}
@@ -289,11 +284,6 @@
   vertical-align: middle;
   color: #fff;
 }
-.pf-status-pending        { background: #f39c12; }
-.pf-status-approved_mode  { background: #2980b9; }
-.pf-status-rejected_mode  { background: #c0392b; }
-.pf-status-approved_emp   { background: #27ae60; }
-.pf-status-rejected_emp   { background: #c0392b; }
 
 /* ── Type badges ── */
 .pf-type-badge {

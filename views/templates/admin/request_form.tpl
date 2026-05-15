@@ -589,21 +589,12 @@
         </label>
         <div class="col-lg-3">
           <select name="status" class="form-control">
-            <option value="pending" {if $pf_obj->status == 'pending' || $pf_is_add}selected{/if}>
-              {l s='En attente' mod='paiementfacilite'}
+            {foreach $pf_all_statuses as $pf_st}
+            <option value="{$pf_st.code|escape:'html'}"
+                    {if $pf_obj->status == $pf_st.code || ($pf_is_add && $pf_st.code == 'pending')}selected{/if}>
+              {$pf_st.name|escape:'html'}
             </option>
-            <option value="approved_mode" {if $pf_obj->status == 'approved_mode'}selected{/if}>
-              {l s='Validé par La Mode' mod='paiementfacilite'}
-            </option>
-            <option value="rejected_mode" {if $pf_obj->status == 'rejected_mode'}selected{/if}>
-              {l s='Rejeté par La Mode' mod='paiementfacilite'}
-            </option>
-            <option value="approved_emp" {if $pf_obj->status == 'approved_emp'}selected{/if}>
-              {l s="Validé par l'employeur" mod='paiementfacilite'}
-            </option>
-            <option value="rejected_emp" {if $pf_obj->status == 'rejected_emp'}selected{/if}>
-              {l s="Rejeté par l'employeur" mod='paiementfacilite'}
-            </option>
+            {/foreach}
           </select>
         </div>
       </div>

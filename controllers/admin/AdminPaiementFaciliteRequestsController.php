@@ -6,6 +6,7 @@ if (!defined('_PS_VERSION_')) {
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteRequest.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteOrganisation.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteDocument.php';
+require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteStatus.php';
 
 class AdminPaiementFaciliteRequestsController extends ModuleAdminController
 {
@@ -199,6 +200,10 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         $base_url = $this->context->link->getAdminLink('AdminPaiementFaciliteRequests')
             . '&id_request=' . $id_request;
 
+        $statusRow   = PaiementFaciliteStatus::getByCode($request->status);
+        $status_name  = $statusRow ? $statusRow['name'] : $request->status;
+        $status_color = $statusRow ? $statusRow['color'] : '#888888';
+
         $this->context->smarty->assign([
             'pf_request'             => $request,
             'pf_customer'            => $customer,
@@ -208,6 +213,8 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             'pf_upload_base'         => $upload_base,
             'pf_linked_order_id'     => $linked ? (int) $linked['id_order'] : 0,
             'pf_order_url'           => $order_url,
+            'pf_status_name'         => $status_name,
+            'pf_status_color'        => $status_color,
             'pf_approve_mode_url'    => $base_url . '&action=approveMode',
             'pf_reject_mode_url'     => $base_url . '&action=rejectMode',
             'pf_approve_emp_url'     => $base_url . '&action=approveEmployeur',
@@ -246,6 +253,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             return;
         }
         if ($request->updateStatus('approved_mode')) {
+            $this->applyOrderStateFromStatus($request, 'approved_mode');
             $this->sendStatusEmail($request, 'approved_mode');
             $this->confirmations[] = $this->l('Demande validée par La Mode.');
         } else {
@@ -260,7 +268,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             return;
         }
         if ($request->updateStatus('rejected_mode')) {
-            $this->updateLinkedOrderState($request, 'rejected');
+            $this->applyOrderStateFromStatus($request, 'rejected_mode');
             $this->sendStatusEmail($request, 'rejected_mode');
             $this->confirmations[] = $this->l('Demande rejetée par La Mode.');
         } else {
@@ -275,7 +283,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             return;
         }
         if ($request->updateStatus('approved_emp')) {
-            $this->updateLinkedOrderState($request, 'approved');
+            $this->applyOrderStateFromStatus($request, 'approved_emp');
             $this->sendStatusEmail($request, 'approved_emp');
             $this->confirmations[] = $this->l("Demande validée par l'employeur.");
         } else {
@@ -290,7 +298,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             return;
         }
         if ($request->updateStatus('rejected_emp')) {
-            $this->updateLinkedOrderState($request, 'rejected');
+            $this->applyOrderStateFromStatus($request, 'rejected_emp');
             $this->sendStatusEmail($request, 'rejected_emp');
             $this->confirmations[] = $this->l("Demande rejetée par l'employeur.");
         } else {
@@ -304,6 +312,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $request = new PaiementFaciliteRequest((int) $id);
             if (Validate::isLoadedObject($request) && $request->status === 'pending') {
                 $request->updateStatus('approved_mode');
+                $this->applyOrderStateFromStatus($request, 'approved_mode');
                 $this->sendStatusEmail($request, 'approved_mode');
             }
         }
@@ -316,7 +325,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $request = new PaiementFaciliteRequest((int) $id);
             if (Validate::isLoadedObject($request) && $request->status === 'pending') {
                 $request->updateStatus('rejected_mode');
-                $this->updateLinkedOrderState($request, 'rejected');
+                $this->applyOrderStateFromStatus($request, 'rejected_mode');
                 $this->sendStatusEmail($request, 'rejected_mode');
             }
         }
@@ -329,7 +338,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $request = new PaiementFaciliteRequest((int) $id);
             if (Validate::isLoadedObject($request) && $request->status === 'approved_mode') {
                 $request->updateStatus('approved_emp');
-                $this->updateLinkedOrderState($request, 'approved');
+                $this->applyOrderStateFromStatus($request, 'approved_emp');
                 $this->sendStatusEmail($request, 'approved_emp');
             }
         }
@@ -342,7 +351,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $request = new PaiementFaciliteRequest((int) $id);
             if (Validate::isLoadedObject($request) && $request->status === 'approved_mode') {
                 $request->updateStatus('rejected_emp');
-                $this->updateLinkedOrderState($request, 'rejected');
+                $this->applyOrderStateFromStatus($request, 'rejected_emp');
                 $this->sendStatusEmail($request, 'rejected_emp');
             }
         }
@@ -360,45 +369,35 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
     }
 
     /**
-     * Move the linked PS order to the approved or rejected order state.
+     * Look up the PS order state configured for a given request status code
+     * in pf_statuses and transition the linked order if one is set.
      */
-    private function updateLinkedOrderState(PaiementFaciliteRequest $request, $decision)
+    private function applyOrderStateFromStatus(PaiementFaciliteRequest $request, $status_code)
     {
+        $statusRow = PaiementFaciliteStatus::getByCode($status_code);
+        if (!$statusRow || !(int) $statusRow['id_order_state']) {
+            return;
+        }
+
         $linked = $request->getLinkedOrder();
         if (!$linked || !(int) $linked['id_order']) {
             return;
         }
+
         $id_order = (int) $linked['id_order'];
         $order    = new Order($id_order);
         if (!Validate::isLoadedObject($order)) {
             return;
         }
 
-        $config_key = ($decision === 'approved') ? 'PF_OS_APPROVED' : 'PF_OS_REJECTED';
-        $id_state   = (int) Configuration::get($config_key);
-        if (!$id_state) {
-            return;
-        }
-
-        $history              = new OrderHistory();
+        $id_state = (int) $statusRow['id_order_state'];
+        $history  = new OrderHistory();
         $history->id_order    = $id_order;
         $history->id_employee = isset($this->context->employee->id)
             ? (int) $this->context->employee->id
             : 0;
         $history->changeIdOrderState($id_state, $order);
-
-        $message = ($decision === 'approved')
-            ? $this->l('Demande de facilité #') . $request->id . ' ' . $this->l('approuvée.')
-            : $this->l('Demande de facilité #') . $request->id . ' ' . $this->l('rejetée.');
-
-        $history->addWithemail(true, ['employee_firstname' => '', 'employee_lastname' => '']);
-
-        // Add an order message visible in back-office
-        $msg              = new Message();
-        $msg->id_order    = $id_order;
-        $msg->message     = $message;
-        $msg->private     = true;
-        $msg->add();
+        $history->addWithemail(true, []);
     }
 
     private function sendStatusEmail(PaiementFaciliteRequest $request, $status)
@@ -495,6 +494,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             'pf_linked_order_id' => $pf_linked_order_id,
             'pf_docs'            => $docs,
             'pf_doc_count'       => count($docs),
+            'pf_all_statuses'    => PaiementFaciliteStatus::getAll(),
             'doc_labels'         => $this->getDocLabels(),
             'pf_form_action'     => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
             'pf_back_url'        => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),

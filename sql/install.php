@@ -78,3 +78,26 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_documents` (
     PRIMARY KEY (`id_document`),
     KEY `id_request` (`id_request`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
+// Configurable status definitions (links request statuses to PS order states)
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_statuses` (
+    `id_pf_status`   int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `code`           varchar(32) NOT NULL,
+    `name`           varchar(128) NOT NULL,
+    `color`          varchar(16) NOT NULL DEFAULT \'#888888\',
+    `id_order_state` int(10) unsigned DEFAULT NULL,
+    `sort_order`     tinyint(3) unsigned NOT NULL DEFAULT 0,
+    `date_add` datetime NOT NULL,
+    `date_upd` datetime NOT NULL,
+    PRIMARY KEY (`id_pf_status`),
+    UNIQUE KEY `code` (`code`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
+// Seed the 5 workflow statuses (INSERT IGNORE — safe to re-run)
+$sql[] = 'INSERT IGNORE INTO `' . _DB_PREFIX_ . 'pf_statuses`
+    (`code`, `name`, `color`, `id_order_state`, `sort_order`, `date_add`, `date_upd`) VALUES
+    (\'pending\',       \'En attente\',                       \'#f39c12\', NULL, 1, NOW(), NOW()),
+    (\'approved_mode\', \'Validé par La Mode\',               \'#2980b9\', NULL, 2, NOW(), NOW()),
+    (\'rejected_mode\', \'Rejeté par La Mode\',               \'#c0392b\', NULL, 3, NOW(), NOW()),
+    (\'approved_emp\',  \'Validé par l\\\'employeur\',        \'#27ae60\', NULL, 4, NOW(), NOW()),
+    (\'rejected_emp\',  \'Rejeté par l\\\'employeur\',        \'#c0392b\', NULL, 5, NOW(), NOW())';

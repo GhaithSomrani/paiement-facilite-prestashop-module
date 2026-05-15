@@ -11,6 +11,7 @@ if (!defined('_PS_VERSION_')) {
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteRequest.php';
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteOrganisation.php';
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteDocument.php';
+require_once dirname(__FILE__) . '/classes/PaiementFaciliteStatus.php';
 
 class PaiementFacilite extends PaymentModule
 {
@@ -207,12 +208,25 @@ class PaiementFacilite extends PaymentModule
             return false;
         }
 
+        // Statuses tab
+        $tab3 = new Tab();
+        $tab3->active     = 1;
+        $tab3->class_name = 'AdminPaiementFaciliteStatus';
+        $tab3->module     = $this->name;
+        $tab3->id_parent  = (int) $parent->id;
+        foreach (Language::getLanguages() as $lang) {
+            $tab3->name[$lang['id_lang']] = 'Statuts';
+        }
+        if (!$tab3->add()) {
+            return false;
+        }
+
         return true;
     }
 
     private function uninstallTab()
     {
-        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteParent'] as $class) {
+        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteParent'] as $class) {
             $id_tab = (int) Tab::getIdFromClassName($class);
             if ($id_tab) {
                 (new Tab($id_tab))->delete();
@@ -361,7 +375,7 @@ class PaiementFacilite extends PaymentModule
     public function hookDisplayBackOfficeHeader()
     {
         $controller = Tools::getValue('controller');
-        $pfControllers = ['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations'];
+        $pfControllers = ['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus'];
 
         if (
             Tools::getValue('configure') === $this->name

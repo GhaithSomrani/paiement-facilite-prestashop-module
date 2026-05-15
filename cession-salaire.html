@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<title>Cession sur salaire — E-Market</title>
+<style>
+  /* ---------- Page ---------- */
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: #e9ecef;
+    font-family: "Times New Roman", Times, serif;
+    color: #000;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    margin: 24px auto;
+    background: #fff;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    font-size: 12pt;
+    line-height: 1.5;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---------- Header ---------- */
+  .site-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14mm 18mm 10mm;
+    border-bottom: 2px solid #111;
+  }
+
+  .site-header .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+
+  .site-header .brand img {
+    height: 36px;
+    width: auto;
+    display: block;
+  }
+
+  .site-header .brand .brand-text {
+    line-height: 1.15;
+  }
+
+  .site-header .brand .brand-text .name {
+    font-size: 16pt;
+    font-weight: 700;
+    letter-spacing: 1px;
+  }
+
+  .site-header .brand .brand-text .tagline {
+    font-size: 9pt;
+    color: #555;
+    letter-spacing: 0.5px;
+  }
+
+  .site-header .doc-title {
+    text-align: right;
+    line-height: 1.2;
+  }
+
+  .site-header .doc-title .title {
+    font-size: 14pt;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+  }
+
+  .site-header .doc-title .subtitle {
+    font-size: 10pt;
+    color: #555;
+  }
+
+  /* ---------- Main content ---------- */
+  .content {
+    flex: 1;
+    padding: 10mm 18mm 14mm;
+  }
+
+  /* ---------- Reference number ---------- */
+  .ref-no {
+    text-align: right;
+    font-weight: 700;
+    font-size: 13pt;
+    margin-bottom: 28px;
+  }
+
+  /* ---------- Intro ---------- */
+  .intro {
+    margin: 0 0 14px 4px;
+  }
+
+  /* ---------- Field grid ---------- */
+  .fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    column-gap: 28px;
+    row-gap: 6px;
+    margin-bottom: 22px;
+  }
+
+  .field {
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+
+  .field .label {
+    white-space: nowrap;
+  }
+
+  .field .value {
+    flex: 1;
+    border-bottom: 1px dotted #777;
+    min-height: 1.4em;
+    padding: 0 4px;
+  }
+
+  .field.full {
+    grid-column: 1 / -1;
+  }
+
+  .field.full .value {
+    border-bottom: none;
+  }
+
+  .field.full .value .line {
+    display: block;
+    border-bottom: 1px dotted #777;
+    padding: 0 4px;
+    min-height: 1.6em;
+  }
+
+  /* ---------- Body paragraph ---------- */
+  .body-text {
+    text-align: justify;
+    margin: 14px 0 18px;
+  }
+
+  /* ---------- Date line ---------- */
+  .date-line {
+    text-align: center;
+    margin: 32px 0 60px;
+  }
+
+  /* ---------- Signatures ---------- */
+  .signatures {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    text-align: center;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    margin-top: 40px;
+  }
+
+  .signatures .col {
+    padding-top: 6px;
+    border-top: 1px solid #000;
+    margin: 0 6px;
+    font-size: 11pt;
+  }
+
+  /* ---------- Footer ---------- */
+  .site-footer {
+    border-top: 2px solid #111;
+    padding: 8mm 18mm;
+    font-size: 9pt;
+    color: #444;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .site-footer .company {
+    font-weight: 700;
+    color: #111;
+    letter-spacing: 0.5px;
+  }
+
+  .site-footer .contact {
+    text-align: center;
+    line-height: 1.4;
+  }
+
+  .site-footer .meta {
+    text-align: right;
+    line-height: 1.4;
+  }
+
+  /* ---------- Print ---------- */
+  @media print {
+    body { background: #fff; }
+    .page {
+      margin: 0;
+      box-shadow: none;
+      width: auto;
+      min-height: auto;
+    }
+  }
+</style>
+</head>
+<body>
+
+  <main class="page">
+
+    <!-- ============== HEADER ============== -->
+    <header class="site-header">
+      <div class="brand">
+        <img src="assets/logo.png" alt="E-Market logo" />
+        <div class="brand-text">
+          <div class="name">E-MARKET</div>
+          <div class="tagline">Votre partenaire achats</div>
+        </div>
+      </div>
+      <div class="doc-title">
+        <div class="title">Cession sur salaire</div>
+        <div class="subtitle">Engagement irrévocable</div>
+      </div>
+    </header>
+
+    <!-- ============== CONTENT ============== -->
+    <section class="content">
+
+      <div class="ref-no">N<sup>O</sup> ____________</div>
+
+      <p class="intro">Je soussigné (M, Mme, Mlle)</p>
+
+      <section class="fields">
+        <div class="field">
+          <span class="label">- Nom et Prénom :</span>
+          <span class="value"></span>
+        </div>
+        <div class="field">
+          <span class="label">- N° CIN :</span>
+          <span class="value"></span>
+        </div>
+
+        <div class="field">
+          <span class="label">- Organisme :</span>
+          <span class="value"></span>
+        </div>
+        <div class="field">
+          <span class="label">- Matricule :</span>
+          <span class="value"></span>
+        </div>
+
+        <div class="field">
+          <span class="label">- Emploi :</span>
+          <span class="value"></span>
+        </div>
+        <div class="field">
+          <span class="label">- Téléphone :</span>
+          <span class="value"></span>
+        </div>
+
+        <div class="field full">
+          <span class="label">- Adresse :</span>
+          <span class="value">
+            <span class="line"></span>
+            <span class="line"></span>
+            <span class="line"></span>
+          </span>
+        </div>
+
+        <div class="field">
+          <span class="label">- Ville :</span>
+          <span class="value"></span>
+        </div>
+      </section>
+
+      <p class="body-text">
+        Je m’engage et j’autorise d’une façon irrévocable et irréversible, la direction de la
+        gestion de paie de mon employeur, la cession sur salaire suite aux achats que j’ai
+        effectués, pour profit de la société E-Market, du montant de :
+      </p>
+
+      <section class="fields">
+        <div class="field">
+          <span class="label">- Montant des achats :</span>
+          <span class="value"></span>
+        </div>
+        <div class="field"></div>
+
+        <div class="field">
+          <span class="label">- Acompte :</span>
+          <span class="value"></span>
+        </div>
+        <div class="field">
+          <span class="label">- Crédit (Reste à payer) :</span>
+          <span class="value"></span>
+        </div>
+
+        <div class="field">
+          <span class="label">- Mensualité :</span>
+          <span class="value"></span>
+        </div>
+        <div class="field">
+          <span class="label">- Nombre de mensualité (s) :</span>
+          <span class="value"></span>
+        </div>
+
+        <div class="field full">
+          <span class="label">- Période (D'échéance) : Du :</span>
+          <span class="value"><span class="line"></span></span>
+        </div>
+      </section>
+
+      <p class="date-line">
+        Fait en trois exemplaires, à _______________ le _______________
+      </p>
+
+      <section class="signatures">
+        <div class="col">CLIENT</div>
+        <div class="col">AMICALE</div>
+        <div class="col">DIRECTION DE PAIE</div>
+        <div class="col">E-MARKET</div>
+      </section>
+
+    </section>
+
+    <!-- ============== FOOTER ============== -->
+    <footer class="site-footer">
+      <div class="company">E-MARKET S.A.R.L.</div>
+      <div class="contact">
+        21 rue Amir Abdelkader, Mutuelle ville, Tunis 1200<br />
+        Tél : (+216) 70 000 000 — <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="086b67667c696b7c486d2565697a636d7c267c66">[email&#160;protected]</a>
+      </div>
+      <div class="meta">
+        RC : B12345678<br />
+        Page 1 / 1
+      </div>
+    </footer>
+
+  </main>
+
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script></body>
+</html>
