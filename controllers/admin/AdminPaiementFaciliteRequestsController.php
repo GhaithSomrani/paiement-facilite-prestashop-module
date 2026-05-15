@@ -510,6 +510,35 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
 
     public function processSave()
     {
+        // ── Required field validation ──────────────────────────
+        $id_org    = (int) Tools::getValue('id_organisation');
+        $org_autre = trim(Tools::getValue('organisation_autre', ''));
+        $is_company = (bool) Tools::getValue('is_company');
+
+        if ($id_org <= 0 && empty($org_autre)) {
+            $this->errors[] = $this->l("L'organisme est obligatoire.");
+        }
+        if ($id_org === -1 && empty($org_autre)) {
+            $this->errors[] = $this->l("Veuillez préciser le nom de l'organisme.");
+        }
+
+        if (!$is_company) {
+            if (!Tools::getValue('date_naissance')) {
+                $this->errors[] = $this->l('La date de naissance est obligatoire.');
+            }
+            if (!trim(Tools::getValue('cin', ''))) {
+                $this->errors[] = $this->l('Le numéro de CIN est obligatoire.');
+            }
+            if (!trim(Tools::getValue('fonction', ''))) {
+                $this->errors[] = $this->l('La fonction / profession est obligatoire.');
+            }
+        }
+
+        if ($this->errors) {
+            return false;
+        }
+
+        // ── Normalize ──────────────────────────────────────────
         $nb_mois = (int) Tools::getValue('nb_mois');
         if ($nb_mois < 2 || $nb_mois > 12) {
             $_POST['nb_mois'] = 6;
@@ -522,8 +551,11 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $_POST['mensualite'] = round(($credit - $tranche) / $nb, 2);
         }
 
-        if (!(int) Tools::getValue('id_organisation')) {
+        if ($id_org <= 0) {
             $_POST['id_organisation'] = null;
+        }
+        if ($id_org === -1 && empty($org_autre)) {
+            $_POST['organisation_autre'] = null;
         }
 
         parent::processSave();

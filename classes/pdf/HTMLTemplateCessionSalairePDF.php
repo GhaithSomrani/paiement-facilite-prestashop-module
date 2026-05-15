@@ -59,34 +59,38 @@ class HTMLTemplateCessionSalairePDF
 
         // Shop info
         $logo_file = _PS_IMG_DIR_ . Configuration::get('PS_LOGO');
-        $logo_path = file_exists($logo_file) ? $logo_file : '';
+        $logo_path = file_exists($logo_file) ? str_replace('\\', '/', $logo_file) : '';
 
         $shop_name    = Configuration::get('PS_SHOP_NAME');
+        $shop_email   = Configuration::get('PS_SHOP_EMAIL') ?: '';
         $shop_phone   = Configuration::get('PS_SHOP_PHONE') ?: '';
         $shop_details = Configuration::get('PS_SHOP_DETAILS') ?: '';
+        $shop_city    = Configuration::get('PS_SHOP_CITY') ?: '';
+        $shop_domain  = Configuration::get('PS_SHOP_DOMAIN') ?: '';
 
-        $shop_addr = Configuration::get('PS_SHOP_ADDR1') ?: '';
-        if (Configuration::get('PS_SHOP_ADDR2')) {
-            $shop_addr .= ', ' . Configuration::get('PS_SHOP_ADDR2');
-        }
-        $shop_addr .= "\n" . (Configuration::get('PS_SHOP_CODE') ?: '') . ' ' . (Configuration::get('PS_SHOP_CITY') ?: '');
+        $addr1 = Configuration::get('PS_SHOP_ADDR1') ?: '';
+        $addr2 = Configuration::get('PS_SHOP_ADDR2') ?: '';
+        $shop_addr = $addr1 . ($addr2 ? ' | ' . $addr2 : '');
 
         $this->smarty->assign([
-            'cs_request'      => $request,
-            'cs_customer'     => $customer,
-            'cs_address'      => $address,
-            'cs_org_name'     => $org_name,
-            'cs_cin'          => $cin,
-            'cs_matricule'    => $matricule,
-            'cs_credit_reste' => $credit_reste,
-            'cs_period_start' => $period_start,
-            'cs_period_end'   => $period_end,
-            'cs_logo_path'    => $logo_path,
-            'cs_shop_name'    => $shop_name,
-            'cs_shop_phone'   => $shop_phone,
-            'cs_shop_address' => $shop_addr,
-            'cs_shop_rc'      => $shop_details,
-            'cs_date'         => date('d/m/Y'),
+            'cs_request'       => $request,
+            'cs_customer'      => $customer,
+            'cs_address'       => $address,
+            'cs_org_name'      => $org_name,
+            'cs_cin'           => $cin,
+            'cs_matricule'     => $matricule,
+            'cs_credit_reste'  => $credit_reste,
+            'cs_period_start'  => $period_start,
+            'cs_period_end'    => $period_end,
+            'cs_logo_path'     => $logo_path,
+            'cs_shop_name'     => $shop_name,
+            'cs_shop_email'    => $shop_email,
+            'cs_shop_phone'    => $shop_phone,
+            'cs_shop_city'     => $shop_city,
+            'cs_shop_domain'   => $shop_domain,
+            'cs_shop_address'  => $shop_addr,
+            'cs_shop_rc'       => $shop_details,
+            'cs_date'          => date('d/m/Y'),
         ]);
 
         $tpl_path = _PS_MODULE_DIR_ . 'paiementfacilite/views/templates/pdf/cession_salaire.tpl';

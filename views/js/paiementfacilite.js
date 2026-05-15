@@ -52,6 +52,7 @@
       toggleRetiredBlock();
       toggleCompanyFields();
       toggleDocBlocks();
+      $('#pf-org-select').trigger('change');
     });
 
     // Retired toggle buttons
@@ -95,7 +96,8 @@
         $('#pf-partner-notice').show();
         PF.belongsToPartner = true;
       } else {
-        $('#pf-org-autre-block').hide();
+        // val === 0 (Aucun) — for companies, still show the org-name field
+        $('#pf-org-autre-block').toggle(PF.isCompany);
         $('#pf-partner-notice').hide();
         PF.belongsToPartner = false;
       }

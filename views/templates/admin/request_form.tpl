@@ -155,13 +155,21 @@
       <div class="form-group">
         <label class="control-label col-lg-3">{l s='Organisme' mod='paiementfacilite'}</label>
         <div class="col-lg-5">
-          <select name="id_organisation" id="pf-org-select" class="form-control">
+          <select name="id_organisation" id="pf-org-select" class="form-control" required>
+            <option value="" disabled {if !$pf_obj->id_organisation && !$pf_obj->organisation_autre}selected{/if}>
+              {l s='-- Sélectionnez un organisme --' mod='paiementfacilite'}
+            </option>
             {foreach $pf_organisations as $org}
+            {if $org.id_organisation > 0}
             <option value="{$org.id_organisation|intval}"
-                    {if $pf_obj->id_organisation == $org.id_organisation}selected{/if}>
+                    {if $pf_obj->id_organisation == $org.id_organisation && !$pf_obj->organisation_autre}selected{/if}>
               {$org.name|escape:'html'}
             </option>
+            {/if}
             {/foreach}
+            <option value="-1" {if !$pf_obj->id_organisation && $pf_obj->organisation_autre}selected{/if}>
+              {l s='Autre organisme' mod='paiementfacilite'}
+            </option>
           </select>
         </div>
       </div>
@@ -177,22 +185,8 @@
         </div>
       </div>
 
-      <div class="form-group">
-        <label class="control-label col-lg-3">
-          {l s='Membre partenaire' mod='paiementfacilite'}
-        </label>
-        <div class="col-lg-9">
-          <span class="switch prestashop-switch fixed-width-lg">
-            <input type="radio" name="belongs_to_partner" id="bp1" value="1"
-                   {if $pf_obj->belongs_to_partner}checked{/if}>
-            <label for="bp1">{l s='Oui' mod='paiementfacilite'}</label>
-            <input type="radio" name="belongs_to_partner" id="bp0" value="0"
-                   {if !$pf_obj->belongs_to_partner}checked{/if}>
-            <label for="bp0">{l s='Non' mod='paiementfacilite'}</label>
-            <a class="slide-button btn"></a>
-          </span>
-        </div>
-      </div>
+      <input type="hidden" name="belongs_to_partner" id="pf-belongs-to-partner"
+             value="{if $pf_obj->id_organisation > 0}1{else}0{/if}">
 
     </div>
   </div>
@@ -212,7 +206,7 @@
           {l s='Date de naissance' mod='paiementfacilite'} <span class="required">*</span>
         </label>
         <div class="col-lg-3">
-          <input type="date" name="date_naissance" class="form-control"
+          <input type="date" name="date_naissance" id="pf-date-naissance" class="form-control"
                  value="{$pf_obj->date_naissance|escape:'html'}">
         </div>
       </div>
@@ -222,7 +216,7 @@
           {l s='CIN' mod='paiementfacilite'} <span class="required">*</span>
         </label>
         <div class="col-lg-3">
-          <input type="text" name="cin" class="form-control"
+          <input type="text" name="cin" id="pf-cin" class="form-control"
                  value="{$pf_obj->cin|escape:'html'}">
         </div>
       </div>
@@ -232,7 +226,7 @@
           {l s='Fonction / Profession' mod='paiementfacilite'} <span class="required">*</span>
         </label>
         <div class="col-lg-5">
-          <input type="text" name="fonction" class="form-control"
+          <input type="text" name="fonction" id="pf-fonction" class="form-control"
                  value="{$pf_obj->fonction|escape:'html'}">
         </div>
       </div>
@@ -801,20 +795,20 @@
     );
   }
 
-  /* ── Pre-fill credit amount from selected order ── */
+  /* ── Order selection always updates credit amount ── */
   $('#pf-order-select').on('change', function () {
     var total = parseFloat($(this).find(':selected').data('total')) || 0;
-    if (total > 0 && !(parseFloat($('#pf-credit-amount').val()) > 0)) {
-      $('#pf-credit-amount').val(total.toFixed(2)).trigger('change');
+    if (total > 0) {
+      $('#pf-credit-amount').val(total.toFixed(2));
+      recalcCredit();
     }
   });
 
   /* ── Type toggle ── */
   $('input[name=is_company]').on('change', function () {
-    var isCompany = $(this).val() == '1';
-    $('#pf-retired-row').toggle(!isCompany);
-    $('#pf-individual-section').toggle(!isCompany);
-    $('#pf-company-section').toggle(isCompany);
+    $('#pf-retired-row').toggle($(this).val() != '1');
+    $('#pf-individual-section').toggle($(this).val() != '1');
+    updateCompanySection();
     updateDocSections();
     disableHiddenDocs();
   });
@@ -842,23 +836,43 @@
   }
 
   /* ── Organisation ── */
+  function updateCompanySection() {
+    var isCompany = $('input[name=is_company]:checked').val() == '1';
+    var orgVal    = parseInt($('#pf-org-select').val()) || 0;
+    var isPartner = isCompany && orgVal > 0;
+    $('#pf-company-section').toggle(isCompany && !isPartner);
+  }
+
   $('#pf-org-select').on('change', function () {
-    var val = parseInt($(this).val());
-    $('#pf-org-autre-row').toggle(val === -1 || val === 0);
+    var val = parseInt($(this).val()) || 0;
+    $('#pf-org-autre-row').toggle(val === -1 || val <= 0);
+    $('#pf-belongs-to-partner').val(val > 0 ? 1 : 0);
+    $('#pf-docs-panel').toggle(val <= 0);
+    updateCompanySection();
   });
 
-  /* ── Mensualité auto-calc ── */
-  $('#pf-credit-amount, #pf-premiere-tranche, #pf-nb-mois').on('input change', function () {
-    var credit  = parseFloat($('#pf-credit-amount').val())    || 0;
-    var tranche = parseFloat($('#pf-premiere-tranche').val()) || 0;
-    var nb      = parseInt($('#pf-nb-mois').val())            || 6;
-    if (credit > 0 && tranche < credit && nb > 0) {
-      var m = Math.round(((credit - tranche) / nb) * 100) / 100;
-      if (!parseFloat($('#pf-mensualite').val())) {
-        $('#pf-mensualite').val(m.toFixed(2));
-      }
+  /* ── Credit calculations ── */
+  function recalcCredit() {
+    var credit = parseFloat($('#pf-credit-amount').val()) || 0;
+    var nb     = parseInt($('#pf-nb-mois').val()) || 6;
+
+    // Enforce 20% minimum on premiere_tranche
+    var minTranche = Math.ceil(credit * 0.20 * 100) / 100;
+    var tranche    = parseFloat($('#pf-premiere-tranche').val()) || 0;
+    if (credit > 0 && tranche < minTranche) {
+      tranche = minTranche;
+      $('#pf-premiere-tranche').val(tranche.toFixed(2));
     }
-  });
+
+    // Recalculate mensualite
+    if (credit > 0 && tranche < credit && nb > 0) {
+      $('#pf-mensualite').val(Math.round(((credit - tranche) / nb) * 100) / 100);
+    } else {
+      $('#pf-mensualite').val('0.00');
+    }
+  }
+
+  $('#pf-credit-amount, #pf-premiere-tranche, #pf-nb-mois').on('input change', recalcCredit);
 
   /* ── Delete document ── */
   $(document).on('click', '.pf-doc-delete', function () {
@@ -927,7 +941,50 @@
 
   /* ── Init ── */
   updateDocSections();
+  updateCompanySection();
   disableHiddenDocs();
+  // Docs panel: hide on load when a partner org is already selected
+  var initOrg = parseInt($('#pf-org-select').val()) || 0;
+  $('#pf-docs-panel').toggle(initOrg <= 0);
+
+  /* ── Submit validation ── */
+  $('#pf-admin-form').on('submit', function (e) {
+    var errors = [];
+    var orgVal = parseInt($('#pf-org-select').val()) || 0;
+
+    if (!orgVal && orgVal !== -1) {
+      errors.push("{l s='L\'organisme est obligatoire.' mod='paiementfacilite' js=1}");
+    }
+    if (orgVal === -1 && !$('[name=organisation_autre]').val().trim()) {
+      errors.push("{l s='Veuillez préciser le nom de l\'organisme.' mod='paiementfacilite' js=1}");
+    }
+
+    var isCompany = $('input[name=is_company]:checked').val() == '1';
+    if (!isCompany) {
+      if (!$('#pf-date-naissance').val()) {
+        errors.push("{l s='La date de naissance est obligatoire.' mod='paiementfacilite' js=1}");
+      }
+      if (!$('#pf-cin').val().trim()) {
+        errors.push("{l s='Le numéro de CIN est obligatoire.' mod='paiementfacilite' js=1}");
+      }
+      if (!$('#pf-fonction').val().trim()) {
+        errors.push("{l s='La fonction / profession est obligatoire.' mod='paiementfacilite' js=1}");
+      }
+    }
+
+    if (errors.length) {
+      e.preventDefault();
+      var $alert = $('#pf-validation-errors');
+      if (!$alert.length) {
+        $alert = $('<div id="pf-validation-errors" class="alert alert-danger" style="margin:10px 15px;"></div>');
+        $('#pf-admin-form').prepend($alert);
+      }
+      $alert.html('<ul style="margin:0;padding-left:18px;">' +
+        errors.map(function (m) { return '<li>' + m + '</li>'; }).join('') +
+        '</ul>');
+      $('html,body').animate({ scrollTop: 0 }, 200);
+    }
+  });
 
 })(jQuery);
 </script>

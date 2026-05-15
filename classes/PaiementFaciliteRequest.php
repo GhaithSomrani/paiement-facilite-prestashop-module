@@ -178,7 +178,12 @@ class PaiementFaciliteRequest extends ObjectModel
         if (!in_array($status, $allowed)) {
             return false;
         }
-        dump($this);
+        if ($this->date_naissance_gerant == '0000-00-00') {
+            $this->date_naissance_gerant = null;
+        }
+        if ($this->date_naissance  == '0000-00-00') {
+            $this->date_naissance = null;
+        }
         $this->status = $status;
         return $this->update();
     }
