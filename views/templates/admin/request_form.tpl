@@ -592,11 +592,17 @@
             <option value="pending" {if $pf_obj->status == 'pending' || $pf_is_add}selected{/if}>
               {l s='En attente' mod='paiementfacilite'}
             </option>
-            <option value="approved" {if $pf_obj->status == 'approved'}selected{/if}>
-              {l s='Approuvé' mod='paiementfacilite'}
+            <option value="approved_mode" {if $pf_obj->status == 'approved_mode'}selected{/if}>
+              {l s='Validé par La Mode' mod='paiementfacilite'}
             </option>
-            <option value="rejected" {if $pf_obj->status == 'rejected'}selected{/if}>
-              {l s='Rejeté' mod='paiementfacilite'}
+            <option value="rejected_mode" {if $pf_obj->status == 'rejected_mode'}selected{/if}>
+              {l s='Rejeté par La Mode' mod='paiementfacilite'}
+            </option>
+            <option value="approved_emp" {if $pf_obj->status == 'approved_emp'}selected{/if}>
+              {l s="Validé par l'employeur" mod='paiementfacilite'}
+            </option>
+            <option value="rejected_emp" {if $pf_obj->status == 'rejected_emp'}selected{/if}>
+              {l s="Rejeté par l'employeur" mod='paiementfacilite'}
             </option>
           </select>
         </div>

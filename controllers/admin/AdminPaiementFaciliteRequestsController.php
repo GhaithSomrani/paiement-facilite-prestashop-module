@@ -60,13 +60,16 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
                 'title'         => $this->l('Statut'),
                 'type'          => 'select',
                 'list'          => [
-                    'pending'  => $this->l('En attente'),
-                    'approved' => $this->l('Approuvé'),
-                    'rejected' => $this->l('Rejeté'),
+                    'pending'       => $this->l('En attente'),
+                    'approved_mode' => $this->l('Validé par La Mode'),
+                    'rejected_mode' => $this->l('Rejeté par La Mode'),
+                    'approved_emp'  => $this->l("Validé par l'employeur"),
+                    'rejected_emp'  => $this->l("Rejeté par l'employeur"),
                 ],
-                'badge_success' => ['approved'],
                 'badge_warning' => ['pending'],
-                'badge_danger'  => ['rejected'],
+                'badge_info'    => ['approved_mode'],
+                'badge_success' => ['approved_emp'],
+                'badge_danger'  => ['rejected_mode', 'rejected_emp'],
                 'filter_key'    => 'a!status',
             ],
 
@@ -78,13 +81,21 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         ];
 
         $this->bulk_actions = [
-            'approve' => [
-                'text'    => $this->l('Approuver'),
-                'confirm' => $this->l('Approuver les demandes sélectionnées ?'),
+            'approve_mode' => [
+                'text'    => $this->l('Valider par La Mode'),
+                'confirm' => $this->l('Valider les demandes sélectionnées par La Mode ?'),
             ],
-            'reject' => [
-                'text'    => $this->l('Rejeter'),
-                'confirm' => $this->l('Rejeter les demandes sélectionnées ?'),
+            'reject_mode' => [
+                'text'    => $this->l('Rejeter par La Mode'),
+                'confirm' => $this->l('Rejeter les demandes sélectionnées par La Mode ?'),
+            ],
+            'approve_employeur' => [
+                'text'    => $this->l("Valider par l'employeur"),
+                'confirm' => $this->l("Valider les demandes sélectionnées par l'employeur ?"),
+            ],
+            'reject_employeur' => [
+                'text'    => $this->l("Rejeter par l'employeur"),
+                'confirm' => $this->l("Rejeter les demandes sélectionnées par l'employeur ?"),
             ],
         ];
 
@@ -185,21 +196,24 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
 
         $upload_base = _PS_MODULE_DIR_ . 'paiementfacilite/uploads/' . $id_request . '/';
 
+        $base_url = $this->context->link->getAdminLink('AdminPaiementFaciliteRequests')
+            . '&id_request=' . $id_request;
+
         $this->context->smarty->assign([
-            'pf_request'    => $request,
-            'pf_customer'   => $customer,
-            'pf_address'    => $address,
-            'pf_org'        => $org,
-            'pf_docs'       => $docs,
-            'pf_upload_base' => $upload_base,
-            'pf_linked_order_id' => $linked ? (int) $linked['id_order'] : 0,
-            'pf_order_url'  => $order_url,
-            'pf_approve_url' => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests')
-                . '&id_request=' . $id_request . '&action=approve&token=' . Tools::getAdminToken('AdminPaiementFaciliteRequests'),
-            'pf_reject_url' => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests')
-                . '&id_request=' . $id_request . '&action=reject&token=' . Tools::getAdminToken('AdminPaiementFaciliteRequests'),
-            'pf_back_url'   => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
-            'doc_labels'    => $this->getDocLabels(),
+            'pf_request'             => $request,
+            'pf_customer'            => $customer,
+            'pf_address'             => $address,
+            'pf_org'                 => $org,
+            'pf_docs'                => $docs,
+            'pf_upload_base'         => $upload_base,
+            'pf_linked_order_id'     => $linked ? (int) $linked['id_order'] : 0,
+            'pf_order_url'           => $order_url,
+            'pf_approve_mode_url'    => $base_url . '&action=approveMode',
+            'pf_reject_mode_url'     => $base_url . '&action=rejectMode',
+            'pf_approve_emp_url'     => $base_url . '&action=approveEmployeur',
+            'pf_reject_emp_url'      => $base_url . '&action=rejectEmployeur',
+            'pf_back_url'            => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'doc_labels'             => $this->getDocLabels(),
         ]);
 
         return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'paiementfacilite/views/templates/admin/view_request.tpl');
@@ -225,64 +239,124 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
     // ACTIONS
     // -------------------------------------------------------------------------
 
-    public function processApprove()
+    public function processApproveMode()
     {
-        $id_request = (int) Tools::getValue('id_request');
-        $request    = new PaiementFaciliteRequest($id_request);
-        if (!Validate::isLoadedObject($request)) {
-            $this->errors[] = $this->l('Demande introuvable.');
+        $request = $this->loadRequestById((int) Tools::getValue('id_request'));
+        if (!$request) {
             return;
         }
-        if ($request->updateStatus('approved')) {
-            $this->updateLinkedOrderState($request, 'approved');
-            $this->sendStatusEmail($request, 'approved');
-            $this->confirmations[] = $this->l('Demande approuvée.');
+        if ($request->updateStatus('approved_mode')) {
+            $this->sendStatusEmail($request, 'approved_mode');
+            $this->confirmations[] = $this->l('Demande validée par La Mode.');
         } else {
             $this->errors[] = $this->l('Impossible de mettre à jour le statut.');
         }
     }
 
-    public function processReject()
+    public function processRejectMode()
     {
-        $id_request = (int) Tools::getValue('id_request');
-        $request    = new PaiementFaciliteRequest($id_request);
-        if (!Validate::isLoadedObject($request)) {
-            $this->errors[] = $this->l('Demande introuvable.');
+        $request = $this->loadRequestById((int) Tools::getValue('id_request'));
+        if (!$request) {
             return;
         }
-        if ($request->updateStatus('rejected')) {
+        if ($request->updateStatus('rejected_mode')) {
             $this->updateLinkedOrderState($request, 'rejected');
-            $this->sendStatusEmail($request, 'rejected');
-            $this->confirmations[] = $this->l('Demande rejetée.');
+            $this->sendStatusEmail($request, 'rejected_mode');
+            $this->confirmations[] = $this->l('Demande rejetée par La Mode.');
         } else {
             $this->errors[] = $this->l('Impossible de mettre à jour le statut.');
         }
     }
 
-    public function processBulkApprove()
+    public function processApproveEmployeur()
     {
-        foreach (Tools::getValue($this->table . 'Box', []) as $id) {
-            $request = new PaiementFaciliteRequest((int) $id);
-            if (Validate::isLoadedObject($request)) {
-                $request->updateStatus('approved');
-                $this->updateLinkedOrderState($request, 'approved');
-                $this->sendStatusEmail($request, 'approved');
-            }
+        $request = $this->loadRequestById((int) Tools::getValue('id_request'));
+        if (!$request) {
+            return;
         }
-        $this->confirmations[] = $this->l('Demandes approuvées.');
+        if ($request->updateStatus('approved_emp')) {
+            $this->updateLinkedOrderState($request, 'approved');
+            $this->sendStatusEmail($request, 'approved_emp');
+            $this->confirmations[] = $this->l("Demande validée par l'employeur.");
+        } else {
+            $this->errors[] = $this->l('Impossible de mettre à jour le statut.');
+        }
     }
 
-    public function processBulkReject()
+    public function processRejectEmployeur()
+    {
+        $request = $this->loadRequestById((int) Tools::getValue('id_request'));
+        if (!$request) {
+            return;
+        }
+        if ($request->updateStatus('rejected_emp')) {
+            $this->updateLinkedOrderState($request, 'rejected');
+            $this->sendStatusEmail($request, 'rejected_emp');
+            $this->confirmations[] = $this->l("Demande rejetée par l'employeur.");
+        } else {
+            $this->errors[] = $this->l('Impossible de mettre à jour le statut.');
+        }
+    }
+
+    public function processBulkApproveMode()
     {
         foreach (Tools::getValue($this->table . 'Box', []) as $id) {
             $request = new PaiementFaciliteRequest((int) $id);
-            if (Validate::isLoadedObject($request)) {
-                $request->updateStatus('rejected');
-                $this->updateLinkedOrderState($request, 'rejected');
-                $this->sendStatusEmail($request, 'rejected');
+            if (Validate::isLoadedObject($request) && $request->status === 'pending') {
+                $request->updateStatus('approved_mode');
+                $this->sendStatusEmail($request, 'approved_mode');
             }
         }
-        $this->confirmations[] = $this->l('Demandes rejetées.');
+        $this->confirmations[] = $this->l('Demandes validées par La Mode.');
+    }
+
+    public function processBulkRejectMode()
+    {
+        foreach (Tools::getValue($this->table . 'Box', []) as $id) {
+            $request = new PaiementFaciliteRequest((int) $id);
+            if (Validate::isLoadedObject($request) && $request->status === 'pending') {
+                $request->updateStatus('rejected_mode');
+                $this->updateLinkedOrderState($request, 'rejected');
+                $this->sendStatusEmail($request, 'rejected_mode');
+            }
+        }
+        $this->confirmations[] = $this->l('Demandes rejetées par La Mode.');
+    }
+
+    public function processBulkApproveEmployeur()
+    {
+        foreach (Tools::getValue($this->table . 'Box', []) as $id) {
+            $request = new PaiementFaciliteRequest((int) $id);
+            if (Validate::isLoadedObject($request) && $request->status === 'approved_mode') {
+                $request->updateStatus('approved_emp');
+                $this->updateLinkedOrderState($request, 'approved');
+                $this->sendStatusEmail($request, 'approved_emp');
+            }
+        }
+        $this->confirmations[] = $this->l("Demandes validées par l'employeur.");
+    }
+
+    public function processBulkRejectEmployeur()
+    {
+        foreach (Tools::getValue($this->table . 'Box', []) as $id) {
+            $request = new PaiementFaciliteRequest((int) $id);
+            if (Validate::isLoadedObject($request) && $request->status === 'approved_mode') {
+                $request->updateStatus('rejected_emp');
+                $this->updateLinkedOrderState($request, 'rejected');
+                $this->sendStatusEmail($request, 'rejected_emp');
+            }
+        }
+        $this->confirmations[] = $this->l("Demandes rejetées par l'employeur.");
+    }
+
+    private function loadRequestById($id_request)
+    {
+        $request = new PaiementFaciliteRequest($id_request);
+        if (!Validate::isLoadedObject($request)) {
+            $this->errors[] = $this->l('Demande introuvable.');
+            return null;
+        }
+        return $request;
     }
 
     /**
@@ -334,24 +408,34 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             return;
         }
 
-        $label = ($status === 'approved') ? 'approuvée' : 'rejetée';
+        $subjects = [
+            'approved_mode' => 'Votre demande a été validée par La Mode — en attente de votre employeur',
+            'rejected_mode' => 'Votre demande de paiement par facilité a été rejetée par La Mode',
+            'approved_emp'  => 'Votre demande de paiement par facilité a été définitivement approuvée',
+            'rejected_emp'  => "Votre demande de paiement par facilité a été rejetée par votre employeur",
+        ];
+
+        $labels = [
+            'approved_mode' => 'validée par La Mode (en attente employeur)',
+            'rejected_mode' => 'rejetée par La Mode',
+            'approved_emp'  => 'approuvée définitivement',
+            'rejected_emp'  => "rejetée par l'employeur",
+        ];
+
+        $template = in_array($status, ['approved_mode', 'approved_emp']) ? 'pf_approved' : 'pf_rejected';
+
         $templateVars = [
             '{firstname}'  => $customer->firstname,
             '{lastname}'   => $customer->lastname,
             '{id_request}' => $request->id,
-            '{status}'     => $label,
+            '{status}'     => $labels[$status] ?? $status,
             '{amount}'     => number_format($request->credit_amount, 2, ',', ' ') . ' DT',
         ];
-
-        $template = ($status === 'approved') ? 'pf_approved' : 'pf_rejected';
-        $subject  = ($status === 'approved')
-            ? 'Votre demande de paiement par facilité a été approuvée'
-            : 'Votre demande de paiement par facilité a été rejetée';
 
         Mail::Send(
             (int) Configuration::get('PS_LANG_DEFAULT'),
             $template,
-            $subject,
+            $subjects[$status] ?? 'Mise à jour de votre demande de facilité',
             $templateVars,
             $customer->email,
             $customer->firstname . ' ' . $customer->lastname,

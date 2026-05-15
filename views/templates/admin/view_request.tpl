@@ -8,20 +8,35 @@
     </a>
     &nbsp;
     <span class="pf-status-badge pf-status-{$pf_request->status|escape:'html'}">
-      {if $pf_request->status == 'approved'}{l s='Approuvé' mod='paiementfacilite'}
-      {elseif $pf_request->status == 'rejected'}{l s='Rejeté' mod='paiementfacilite'}
-      {else}{l s='En attente' mod='paiementfacilite'}{/if}
+      {if $pf_request->status == 'pending'}{l s='En attente' mod='paiementfacilite'}
+      {elseif $pf_request->status == 'approved_mode'}{l s='Validé par La Mode' mod='paiementfacilite'}
+      {elseif $pf_request->status == 'rejected_mode'}{l s='Rejeté par La Mode' mod='paiementfacilite'}
+      {elseif $pf_request->status == 'approved_emp'}{l s="Validé par l'employeur" mod='paiementfacilite'}
+      {elseif $pf_request->status == 'rejected_emp'}{l s="Rejeté par l'employeur" mod='paiementfacilite'}
+      {/if}
     </span>
+
     {if $pf_request->status == 'pending'}
       &nbsp;&nbsp;
-      <a href="{$pf_approve_url|escape:'html'}" class="btn btn-success btn-sm"
-         onclick="return confirm('{l s='Approuver cette demande ?' mod='paiementfacilite'}')">
-        <i class="icon-check"></i> {l s='Approuver' mod='paiementfacilite'}
+      <a href="{$pf_approve_mode_url|escape:'html'}" class="btn btn-info btn-sm"
+         onclick="return confirm('{l s='Valider cette demande par La Mode ?' mod='paiementfacilite'}')">
+        <i class="icon-check"></i> {l s='Valider (La Mode)' mod='paiementfacilite'}
       </a>
       &nbsp;
-      <a href="{$pf_reject_url|escape:'html'}" class="btn btn-danger btn-sm"
-         onclick="return confirm('{l s='Rejeter cette demande ?' mod='paiementfacilite'}')">
-        <i class="icon-times"></i> {l s='Rejeter' mod='paiementfacilite'}
+      <a href="{$pf_reject_mode_url|escape:'html'}" class="btn btn-danger btn-sm"
+         onclick="return confirm('{l s='Rejeter cette demande par La Mode ?' mod='paiementfacilite'}')">
+        <i class="icon-times"></i> {l s='Rejeter (La Mode)' mod='paiementfacilite'}
+      </a>
+    {elseif $pf_request->status == 'approved_mode'}
+      &nbsp;&nbsp;
+      <a href="{$pf_approve_emp_url|escape:'html'}" class="btn btn-success btn-sm"
+         onclick="return confirm('{l s="Valider cette demande par l'employeur ?" mod='paiementfacilite'}')">
+        <i class="icon-check"></i> {l s="Valider (Employeur)" mod='paiementfacilite'}
+      </a>
+      &nbsp;
+      <a href="{$pf_reject_emp_url|escape:'html'}" class="btn btn-danger btn-sm"
+         onclick="return confirm('{l s="Rejeter cette demande par l'employeur ?" mod='paiementfacilite'}')">
+        <i class="icon-times"></i> {l s="Rejeter (Employeur)" mod='paiementfacilite'}
       </a>
     {/if}
   </div>
@@ -234,14 +249,26 @@
     </a>
     {if $pf_request->status == 'pending'}
     <div class="pull-right">
-      <a href="{$pf_reject_url|escape:'html'}" class="btn btn-danger"
-         onclick="return confirm('{l s='Rejeter cette demande ?' mod='paiementfacilite'}')">
-        <i class="icon-times"></i> {l s='Rejeter' mod='paiementfacilite'}
+      <a href="{$pf_reject_mode_url|escape:'html'}" class="btn btn-danger"
+         onclick="return confirm('{l s='Rejeter cette demande par La Mode ?' mod='paiementfacilite'}')">
+        <i class="icon-times"></i> {l s='Rejeter (La Mode)' mod='paiementfacilite'}
       </a>
       &nbsp;
-      <a href="{$pf_approve_url|escape:'html'}" class="btn btn-success"
-         onclick="return confirm('{l s='Approuver cette demande ?' mod='paiementfacilite'}')">
-        <i class="icon-check"></i> {l s='Approuver' mod='paiementfacilite'}
+      <a href="{$pf_approve_mode_url|escape:'html'}" class="btn btn-info"
+         onclick="return confirm('{l s='Valider cette demande par La Mode ?' mod='paiementfacilite'}')">
+        <i class="icon-check"></i> {l s='Valider (La Mode)' mod='paiementfacilite'}
+      </a>
+    </div>
+    {elseif $pf_request->status == 'approved_mode'}
+    <div class="pull-right">
+      <a href="{$pf_reject_emp_url|escape:'html'}" class="btn btn-danger"
+         onclick="return confirm('{l s=\"Rejeter cette demande par l'employeur ?\" mod='paiementfacilite'}')">
+        <i class="icon-times"></i> {l s="Rejeter (Employeur)" mod='paiementfacilite'}
+      </a>
+      &nbsp;
+      <a href="{$pf_approve_emp_url|escape:'html'}" class="btn btn-success"
+         onclick="return confirm('{l s=\"Valider cette demande par l'employeur ?\" mod='paiementfacilite'}')">
+        <i class="icon-check"></i> {l s="Valider (Employeur)" mod='paiementfacilite'}
       </a>
     </div>
     {/if}
@@ -262,9 +289,11 @@
   vertical-align: middle;
   color: #fff;
 }
-.pf-status-pending  { background: #f39c12; }
-.pf-status-approved { background: #27ae60; }
-.pf-status-rejected { background: #c0392b; }
+.pf-status-pending        { background: #f39c12; }
+.pf-status-approved_mode  { background: #2980b9; }
+.pf-status-rejected_mode  { background: #c0392b; }
+.pf-status-approved_emp   { background: #27ae60; }
+.pf-status-rejected_emp   { background: #c0392b; }
 
 /* ── Type badges ── */
 .pf-type-badge {

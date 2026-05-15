@@ -174,7 +174,7 @@ class PaiementFaciliteRequest extends ObjectModel
      */
     public function updateStatus($status)
     {
-        $allowed = ['pending', 'approved', 'rejected'];
+        $allowed = ['pending', 'approved_mode', 'rejected_mode', 'approved_emp', 'rejected_emp'];
         if (!in_array($status, $allowed)) {
             return false;
         }
