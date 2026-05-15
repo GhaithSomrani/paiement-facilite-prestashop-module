@@ -178,6 +178,7 @@ class PaiementFaciliteRequest extends ObjectModel
         if (!in_array($status, $allowed)) {
             return false;
         }
+        dump($this);
         $this->status = $status;
         return $this->update();
     }

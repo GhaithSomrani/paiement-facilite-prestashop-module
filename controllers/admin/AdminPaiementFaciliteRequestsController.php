@@ -7,6 +7,7 @@ require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteRequest
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteOrganisation.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteDocument.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteStatus.php';
+require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/pdf/HTMLTemplateCessionSalairePDF.php';
 
 class AdminPaiementFaciliteRequestsController extends ModuleAdminController
 {
@@ -215,6 +216,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             'pf_order_url'           => $order_url,
             'pf_status_name'         => $status_name,
             'pf_status_color'        => $status_color,
+            'pf_pdf_url'             => $base_url . '&download_pdf=1',
             'pf_approve_mode_url'    => $base_url . '&action=approveMode',
             'pf_reject_mode_url'     => $base_url . '&action=rejectMode',
             'pf_approve_emp_url'     => $base_url . '&action=approveEmployeur',
@@ -815,6 +817,17 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
 
     public function postProcess()
     {
+        if (Tools::getValue('download_pdf')) {
+            $id_request = (int) Tools::getValue('id_request');
+            $request    = new PaiementFaciliteRequest($id_request);
+            if (!Validate::isLoadedObject($request)) {
+                $this->errors[] = $this->l('Demande introuvable.');
+            } else {
+                $pdf = new HTMLTemplateCessionSalairePDF($request, $this->context->smarty);
+                $pdf->render(); // streams PDF and exits
+            }
+        }
+
         if (Tools::getValue('download_doc')) {
             $id_doc = (int) Tools::getValue('id_document');
             $doc    = new PaiementFaciliteDocument($id_doc);
