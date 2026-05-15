@@ -378,28 +378,43 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $orgs[] = $o;
         }
 
-        $pf_customer  = null;
-        $pf_addresses = [];
+        $pf_customer        = null;
+        $pf_addresses       = [];
+        $pf_orders          = [];
+        $pf_linked_order_id = 0;
         if (!$is_add && $obj->id_customer) {
             $pf_customer = new Customer((int) $obj->id_customer);
             if (!Validate::isLoadedObject($pf_customer)) {
                 $pf_customer = null;
             } else {
                 $pf_addresses = $pf_customer->getAddresses((int) $this->context->language->id);
+                $pf_orders    = $this->getCustomerOrdersForSelect((int) $obj->id_customer);
             }
+            $linked = $obj->getLinkedOrder();
+            $pf_linked_order_id = $linked ? (int) $linked['id_order'] : 0;
         }
 
+        $docs = $is_add ? [] : $obj->getDocuments();
+        foreach ($docs as &$doc) {
+            $doc['file_ext']       = strtolower(pathinfo($doc['filename'], PATHINFO_EXTENSION));
+            $doc['date_formatted'] = date('d/m/Y', strtotime($doc['date_add']));
+        }
+        unset($doc);
+
         $this->context->smarty->assign([
-            'pf_obj'           => $obj,
-            'pf_is_add'        => $is_add,
-            'pf_organisations' => $orgs,
-            'pf_customer'      => $pf_customer,
-            'pf_addresses'     => $pf_addresses,
-            'pf_docs'          => $is_add ? [] : $obj->getDocuments(),
-            'doc_labels'       => $this->getDocLabels(),
-            'pf_form_action'   => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
-            'pf_back_url'      => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
-            'pf_ajax_url'      => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_obj'             => $obj,
+            'pf_is_add'          => $is_add,
+            'pf_organisations'   => $orgs,
+            'pf_customer'        => $pf_customer,
+            'pf_addresses'       => $pf_addresses,
+            'pf_orders'          => $pf_orders,
+            'pf_linked_order_id' => $pf_linked_order_id,
+            'pf_docs'            => $docs,
+            'pf_doc_count'       => count($docs),
+            'doc_labels'         => $this->getDocLabels(),
+            'pf_form_action'     => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_back_url'        => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_ajax_url'        => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
         ]);
 
         return $this->context->smarty->fetch(
@@ -433,6 +448,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         $result = parent::processAdd();
         if ($result && Validate::isLoadedObject($this->object)) {
             $this->saveDocuments((int) $this->object->id);
+            $this->saveOrderLink((int) $this->object->id, (int) Tools::getValue('id_order_link'));
         }
         return $result;
     }
@@ -442,6 +458,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         $result = parent::processUpdate();
         if ($result !== false && Validate::isLoadedObject($this->object)) {
             $this->saveDocuments((int) $this->object->id);
+            $this->saveOrderLink((int) $this->object->id, (int) Tools::getValue('id_order_link'));
         }
         return $result;
     }
@@ -472,7 +489,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
 
         foreach ($singles as $input => $type) {
             if (!empty($_FILES[$input]['name']) && $_FILES[$input]['error'] === UPLOAD_ERR_OK) {
-                PaiementFaciliteDocument::saveUpload($id_request, $type, $_FILES[$input]);
+                $this->replaceSingleDoc($id_request, $type, $_FILES[$input]);
             }
         }
 
@@ -483,6 +500,64 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         if (!empty($_FILES['releve_bancaire']['name'])) {
             $this->saveMultiDoc($id_request, 'releve_bancaire', PaiementFaciliteDocument::TYPE_RELEVE_BANCAIRE, 3);
         }
+    }
+
+    private function saveOrderLink($id_request, $id_order)
+    {
+        Db::getInstance()->delete('pf_request_orders', 'id_request = ' . (int) $id_request);
+        if ($id_order) {
+            Db::getInstance()->insert('pf_request_orders', [
+                'id_request' => (int) $id_request,
+                'id_order'   => (int) $id_order,
+                'date_add'   => date('Y-m-d H:i:s'),
+            ]);
+        }
+    }
+
+    private function getCustomerOrdersForSelect($id_customer)
+    {
+
+        $min_amout = Configuration::get('PF_MIN_AMOUNT');
+        $query = new DbQuery();
+        $query->select('o.id_order, o.reference, o.total_paid_tax_incl, o.date_add');
+        $query->from('orders', 'o');
+        $query->leftJoin('pf_request_orders', 'ro', 'ro.id_order = o.id_order');
+        $query->where('o.id_customer = ' . (int) $id_customer);
+        $query->where('o.id_order NOT IN (SELECT id_order FROM ' . _DB_PREFIX_ . 'pf_request_orders)');
+        $query->where('o.total_paid_tax_incl >' .  (float)$min_amout);
+        $query->orderBy('o.date_add DESC');
+        $query->limit(50);
+        $rows = Db::getInstance()->executeS($query);
+
+
+
+        $out = [];
+        foreach ($rows as $o) {
+            $out[] = [
+                'id_order' => (int) $o['id_order'],
+                'label'    => '#' . $o['id_order'] . ' — ' . $o['reference']
+                    . ' — ' . number_format((float) $o['total_paid_tax_incl'], 2, ',', ' ') . ' DT'
+                    . ' (' . substr($o['date_add'], 0, 10) . ')',
+                'total'    => (float) $o['total_paid_tax_incl'],
+            ];
+        }
+        return $out;
+    }
+
+    private function replaceSingleDoc($id_request, $type, array $file)
+    {
+        $existing = Db::getInstance()->executeS(
+            'SELECT id_document, filename FROM `' . _DB_PREFIX_ . 'pf_documents`
+             WHERE id_request = ' . (int) $id_request . ' AND doc_type = \'' . pSQL($type) . '\''
+        );
+        foreach ($existing as $row) {
+            $path = _PS_MODULE_DIR_ . 'paiementfacilite/uploads/' . (int) $id_request . '/' . $row['filename'];
+            if (file_exists($path)) {
+                @unlink($path);
+            }
+            Db::getInstance()->delete('pf_documents', 'id_document = ' . (int) $row['id_document']);
+        }
+        PaiementFaciliteDocument::saveUpload($id_request, $type, $file);
     }
 
     private function saveMultiDoc($id_request, $input_name, $doc_type, $max)
@@ -528,7 +603,13 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
                AND (c.firstname LIKE \'' . $like . '\'
                  OR c.lastname  LIKE \'' . $like . '\'
                  OR c.email     LIKE \'' . $like . '\'
-                 OR CONCAT(c.firstname,\' \',c.lastname) LIKE \'' . $like . '\')
+                 OR CONCAT(c.firstname,\' \',c.lastname) LIKE \'' . $like . '\'
+                 OR EXISTS (
+                     SELECT 1 FROM `' . _DB_PREFIX_ . 'address` a2
+                     WHERE a2.id_customer = c.id_customer
+                       AND a2.deleted = 0
+                       AND a2.phone LIKE \'' . $like . '\'
+                 ))
              ORDER BY c.lastname ASC
              LIMIT 20'
         );
@@ -538,7 +619,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             $out[] = [
                 'id'    => (int) $r['id_customer'],
                 'label' => $r['firstname'] . ' ' . $r['lastname'] . ' — ' . $r['email']
-                           . ($r['phone'] ? ' — ' . $r['phone'] : ''),
+                    . ($r['phone'] ? ' — ' . $r['phone'] : ''),
                 'name'  => $r['firstname'] . ' ' . $r['lastname'],
                 'email' => $r['email'],
             ];
@@ -613,6 +694,35 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             ];
         }
         die(json_encode(['success' => true, 'id_address' => (int) $address->id, 'addresses' => $out]));
+    }
+
+    public function ajaxProcessGetCustomerOrders()
+    {
+        $id_customer = (int) Tools::getValue('id_customer');
+        if (!$id_customer) {
+            die(json_encode([]));
+        }
+        die(json_encode($this->getCustomerOrdersForSelect($id_customer)));
+    }
+
+    public function ajaxProcessDeleteDocument()
+    {
+        $id_document = (int) Tools::getValue('id_document');
+        if (!$id_document) {
+            die(json_encode(['success' => false, 'error' => 'ID invalide.']));
+        }
+        $doc = new PaiementFaciliteDocument($id_document);
+        if (!Validate::isLoadedObject($doc)) {
+            die(json_encode(['success' => false, 'error' => 'Document introuvable.']));
+        }
+        $path = $doc->getFilePath();
+        if (file_exists($path)) {
+            @unlink($path);
+        }
+        if ($doc->delete()) {
+            die(json_encode(['success' => true]));
+        }
+        die(json_encode(['success' => false, 'error' => 'Erreur de suppression.']));
     }
 
     // -------------------------------------------------------------------------
