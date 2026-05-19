@@ -108,6 +108,20 @@ class HTMLTemplateCessionSalairePDF
      */
     public function render()
     {
+        $this->buildPdf()->Output($this->getFilename(), 'D');
+        exit;
+    }
+
+    /**
+     * Generate the PDF and return its raw binary content (for email attachments, etc.)
+     */
+    public function getPdfContent()
+    {
+        return $this->buildPdf()->Output($this->getFilename(), 'S');
+    }
+
+    private function buildPdf()
+    {
         $html = $this->getContent();
 
         $tcpdf_path = _PS_ROOT_DIR_ . '/vendor/tecnickcom/tcpdf/tcpdf.php';
@@ -126,7 +140,7 @@ class HTMLTemplateCessionSalairePDF
         $pdf->SetFont('dejavusans', '', 11);
         $pdf->AddPage();
         $pdf->writeHTML($html, true, false, true, false, '');
-        $pdf->Output($this->getFilename(), 'D');
-        exit;
+
+        return $pdf;
     }
 }

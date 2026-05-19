@@ -462,11 +462,25 @@ class PaiementFacilite extends PaymentModule
             }
         }
 
+        $pdf_url = '';
+        if ($pf_request) {
+            $pdf_url = $this->context->link->getModuleLink(
+                'paiementfacilite',
+                'request',
+                ['download_pdf' => 1, 'id_request' => (int) $pf_request->id],
+                true
+            );
+        }
+
+        $admin_email = Configuration::get('PF_ADMIN_EMAIL') ?: Configuration::get('PS_SHOP_EMAIL');
+
         $this->context->smarty->assign([
-            'shop_name'  => $this->context->shop->name,
-            'id_order'   => $order->id,
-            'reference'  => $order->reference,
-            'pf_request' => $pf_request,
+            'shop_name'      => $this->context->shop->name,
+            'id_order'       => $order->id,
+            'reference'      => $order->reference,
+            'pf_request'     => $pf_request,
+            'pf_pdf_url'     => $pdf_url,
+            'pf_admin_email' => $admin_email,
         ]);
 
         return $this->fetch('module:paiementfacilite/views/templates/hook/payment_return.tpl');
@@ -508,13 +522,31 @@ class PaiementFacilite extends PaymentModule
         }
 
         $templateVars = [
-            '{firstname}' => $customer->firstname,
-            '{lastname}'  => $customer->lastname,
+            '{firstname}'  => $customer->firstname,
+            '{lastname}'   => $customer->lastname,
             '{id_request}' => $request->id,
-            '{amount}'    => number_format($request->credit_amount, 2, ',', ' ') . ' DT',
-            '{date}'      => date('d/m/Y'),
+            '{amount}'     => number_format($request->credit_amount, 2, ',', ' ') . ' DT',
+            '{date}'       => date('d/m/Y'),
         ];
 
+        // Generate PDF attachment
+        $fileAttachment = null;
+        try {
+            require_once dirname(__FILE__) . '/classes/pdf/HTMLTemplateCessionSalairePDF.php';
+            $pdfTemplate    = new HTMLTemplateCessionSalairePDF($request, $this->context->smarty);
+            $fileAttachment = [
+                'content' => $pdfTemplate->getPdfContent(),
+                'name'    => 'cession-salaire-' . (int) $request->id . '.pdf',
+                'mime'    => 'application/pdf',
+            ];
+        } catch (Exception $e) {
+            PrestaShopLogger::addLog(
+                'PaiementFacilite: PDF generation failed for request #' . $id_request . ' — ' . $e->getMessage(),
+                2, null, 'PaiementFaciliteRequest', $id_request
+            );
+        }
+
+        // Customer confirmation with PDF attached
         Mail::Send(
             (int) Configuration::get('PS_LANG_DEFAULT'),
             'pf_confirmation',
@@ -524,12 +556,12 @@ class PaiementFacilite extends PaymentModule
             $customer->firstname . ' ' . $customer->lastname,
             null,
             null,
-            null,
+            $fileAttachment,
             null,
             dirname(__FILE__) . '/mails/'
         );
 
-        // Admin notification
+        // Admin notification (no attachment needed)
         $adminEmail = Configuration::get('PF_ADMIN_EMAIL') ?: Configuration::get('PS_SHOP_EMAIL');
         if ($adminEmail) {
             Mail::Send(

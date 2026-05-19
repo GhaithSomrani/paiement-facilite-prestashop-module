@@ -38,7 +38,7 @@
         showAlerts(errors, 'danger');
         document.cookie = 'pf_errors=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
       }
-    } catch (e) {}
+    } catch (e) { }
   }
 
   /* ── Step 1 — client type ── */
@@ -167,11 +167,11 @@
 
   /* ── Step 5 — credit slider + month selector ── */
   function initCreditSlider() {
-    var $slider   = $('#pf-credit-slider');
-    var $display  = $('#pf-amount-display');
-    var $tranche  = $('#pf-tranche');
-    var $mensual  = $('#pf-mensualite');
-    var $mDisp    = $('#pf-mensualite-display');
+    var $slider = $('#pf-credit-slider');
+    var $display = $('#pf-amount-display');
+    var $tranche = $('#pf-tranche');
+    var $mensual = $('#pf-mensualite');
+    var $mDisp = $('#pf-mensualite-display');
     var $moisDisp = $('#pf-mois-display');
 
     // monthConfigs is keyed by nb_mois (string): {minAmount, interestRate}
@@ -190,13 +190,13 @@
     // Enable/disable each month button: disabled when credit < min_amount for that month.
     // Auto-selects the first available month if the current selection becomes disabled.
     function updateMonthButtons(amount) {
-      var currentMois  = getNbMois();
+      var currentMois = getNbMois();
       var currentValid = true;
 
       $('#pf-mois-row .pf-toggle-btn').each(function () {
-        var m   = parseInt($(this).data('mois'), 10);
+        var m = parseInt($(this).data('mois'), 10);
         var cfg = getMonthConfig(m);
-        var ok  = !cfg || (amount >= cfg.minAmount);
+        var ok = !cfg || (amount >= cfg.minAmount);
 
         if (ok) {
           $(this).removeClass('pf-mois-disabled').prop('disabled', false);
@@ -218,7 +218,7 @@
     }
 
     function recalc() {
-      var amount  = parseFloat($slider.val()) || 0;
+      var amount = parseFloat($slider.val()) || 0;
       var tranche = parseFloat($tranche.val()) || 0;
 
       // Update month button availability for this amount, then read selection
@@ -226,7 +226,7 @@
       var nbMois = getNbMois();
 
       // Interest rate comes from the selected month's config (0 for partner-org members)
-      var cfg          = getMonthConfig(nbMois);
+      var cfg = getMonthConfig(nbMois);
       var interestRate = (!PF.belongsToPartner && cfg) ? cfg.interestRate : 0;
 
       // Total cost = full credit × (1 + rate%)
@@ -238,7 +238,7 @@
       // Update slider fill (range inputs only)
       if ($slider.attr('type') === 'range') {
         var pct = ((amount - parseFloat($slider.attr('min'))) /
-                   (parseFloat($slider.attr('max')) - parseFloat($slider.attr('min')))) * 100;
+          (parseFloat($slider.attr('max')) - parseFloat($slider.attr('min')))) * 100;
         $slider.css('--fill', pct.toFixed(1) + '%');
       }
 
@@ -276,8 +276,8 @@
           var interestAmt = Math.round((totalWithInterest - amount) * 100) / 100;
           $badge
             .html('Total avec intérêts&nbsp;: <strong>' + totalWithInterest.toFixed(2) + ' DT</strong>' +
-                  ' &mdash; Taux&nbsp;: <strong>' + interestRate.toFixed(2) + ' %</strong>' +
-                  ' &mdash; Intérêts&nbsp;: <strong>' + interestAmt.toFixed(2) + ' DT</strong>')
+              ' &mdash; Taux&nbsp;: <strong>' + interestRate.toFixed(2) + ' %</strong>' +
+              ' &mdash; Intérêts&nbsp;: <strong>' + interestAmt.toFixed(2) + ' DT</strong>')
             .show();
         } else {
           $badge.hide();
@@ -317,9 +317,9 @@
 
     // "+ Ajouter" clone buttons
     $(document).on('click', '.pf-add-more[data-target]', function () {
-      var rowId  = $(this).data('target');
+      var rowId = $(this).data('target');
       var maxNum = parseInt($(this).data('max'), 10) || 3;
-      var $row   = $('#' + rowId);
+      var $row = $('#' + rowId);
       if ($row.children('.pf-file-pick').length >= maxNum) return;
 
       var $first = $row.children('.pf-file-pick').first();
@@ -337,9 +337,9 @@
   function wireFilePickers($inputs, maxSize) {
     $inputs.on('change', function () {
       var $pick = $(this).closest('.pf-file-pick');
-      var $btn  = $pick.find('.pf-file-btn');
+      var $btn = $pick.find('.pf-file-btn');
       var $name = $pick.find('.pf-file-name');
-      var file  = this.files && this.files[0];
+      var file = this.files && this.files[0];
       if (file) {
         if (file.size > maxSize) {
           $pick.addClass('has-file');
@@ -383,7 +383,7 @@
     });
     // Clear draft on final submission
     $('#pf-form').on('submit', function () {
-      try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e) { }
     });
   }
 
@@ -435,26 +435,26 @@
 
       case 4:
         if (PF.isCompany) {
-          if (!$('#pf-raison-sociale').val().trim())      errors.push('La raison sociale est obligatoire.');
-          if (!$('#pf-representant-legal').val().trim())  errors.push('Le représentant légal est obligatoire.');
-          if (!$('#pf-date-naissance-gerant').val())      errors.push('La date de naissance du gérant est obligatoire.');
-          if (!$('#pf-telephone-gerant').val().trim())    errors.push('Le numéro de téléphone est obligatoire.');
-          if (!$('#pf-email-gerant').val().trim())        errors.push("L'adresse email est obligatoire.");
-          if (!$('#pf-cin-gerant').val().trim())          errors.push("Le numéro de CIN du gérant est obligatoire.");
+          if (!$('#pf-raison-sociale').val().trim()) errors.push('La raison sociale est obligatoire.');
+          if (!$('#pf-representant-legal').val().trim()) errors.push('Le représentant légal est obligatoire.');
+          if (!$('#pf-date-naissance-gerant').val()) errors.push('La date de naissance du gérant est obligatoire.');
+          if (!$('#pf-telephone-gerant').val().trim()) errors.push('Le numéro de téléphone est obligatoire.');
+          if (!$('#pf-email-gerant').val().trim()) errors.push("L'adresse email est obligatoire.");
+          if (!$('#pf-cin-gerant').val().trim()) errors.push("Le numéro de CIN du gérant est obligatoire.");
         } else {
-          if (!$('#pf-date-naissance').val())  errors.push('La date de naissance est obligatoire.');
-          if (!$('#pf-cin').val().trim())      errors.push('Le numéro de CIN est obligatoire.');
+          if (!$('#pf-date-naissance').val()) errors.push('La date de naissance est obligatoire.');
+          if (!$('#pf-cin').val().trim()) errors.push('Le numéro de CIN est obligatoire.');
           if (!$('#pf-fonction').val().trim()) errors.push('La fonction / profession est obligatoire.');
         }
         break;
 
       case 5:
-        var amount  = parseFloat($('#pf-credit-slider').val()) || 0;
+        var amount = parseFloat($('#pf-credit-slider').val()) || 0;
         var tranche = parseFloat($('#pf-tranche').val()) || 0;
         var nbMoisV = parseInt($('input[name=nb_mois]:checked').val(), 10) || 12;
-        var cfgV    = (PF_CONFIG.monthConfigs && PF_CONFIG.monthConfigs[String(nbMoisV)]) || null;
-        var rateV   = cfgV ? cfgV.interestRate : 0;
-        var totalV  = Math.round(amount * (1 + rateV / 100) * 10000) / 10000;
+        var cfgV = (PF_CONFIG.monthConfigs && PF_CONFIG.monthConfigs[String(nbMoisV)]) || null;
+        var rateV = (!PF.belongsToPartner && cfgV) ? cfgV.interestRate : 0;
+        var totalV = Math.round(amount * (1 + rateV / 100) * 10000) / 10000;
         // Only check min/max range for standalone (free-slider) requests
         if (!PF_CONFIG.isFromCheckout && (amount < PF_CONFIG.minAmount || amount > PF_CONFIG.maxAmount)) {
           errors.push('Le montant doit être entre ' + PF_CONFIG.minAmount + ' DT et ' + PF_CONFIG.maxAmount + ' DT.');
@@ -534,14 +534,14 @@
     });
 
     $('#pf-save-address-btn').on('click', function () {
-      var $form    = $('#pf-address-modal-form');
-      var $errBox  = $('#pf-address-modal-errors');
+      var $form = $('#pf-address-modal-form');
+      var $errBox = $('#pf-address-modal-errors');
       var $spinner = $('#pf-save-address-spinner');
       $errBox.hide().empty();
 
       var missing = [];
       $form.find('[required]').each(function () {
-        if (!$(this).val().trim()) missing.push($(this).prev('label').text().replace(' *','').trim());
+        if (!$(this).val().trim()) missing.push($(this).prev('label').text().replace(' *', '').trim());
       });
       if (missing.length) { $errBox.html('Champs obligatoires : ' + missing.join(', ')).show(); return; }
 
@@ -579,7 +579,7 @@
   function initDraft() {
     // Clear any draft when the user lands on the confirmation page
     if (window.location.search.indexOf('confirmed=1') !== -1) {
-      try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e) { }
       return;
     }
     if (typeof PF_CONFIG === 'undefined') return;
@@ -594,7 +594,7 @@
         localStorage.removeItem(DRAFT_KEY);
       }
     } catch (e) {
-      try { localStorage.removeItem(DRAFT_KEY); } catch (e2) {}
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e2) { }
     }
   }
 
@@ -610,41 +610,41 @@
     });
 
     $('#pf-restart-btn').on('click', function () {
-      try { localStorage.removeItem(DRAFT_KEY); } catch (e) {}
+      try { localStorage.removeItem(DRAFT_KEY); } catch (e) { }
       $banner.slideUp();
     });
   }
 
   function saveDraft(nextStep) {
     var data = {
-      current_step:          nextStep,
-      is_company:            $('input[name=is_company]:checked').val()  || '0',
-      is_retired:            $('input[name=is_retired]:checked').val()   || '0',
-      belongs_to_partner:    $('#pf_belongs_to_partner').val()           || '0',
-      id_organisation:       $('#pf-org-select').val()                   || '0',
-      organisation_autre:    $('#pf-org-autre').val()                    || '',
-      id_address:            $('#pf_id_address_hidden').val()            || '0',
-      date_naissance:        $('#pf-date-naissance').val()               || '',
-      cin:                   $('#pf-cin').val()                          || '',
-      fonction:              $('#pf-fonction').val()                     || '',
-      raison_sociale:        $('#pf-raison-sociale').val()               || '',
-      representant_legal:    $('#pf-representant-legal').val()           || '',
-      date_naissance_gerant: $('#pf-date-naissance-gerant').val()        || '',
-      telephone_gerant:      $('#pf-telephone-gerant').val()             || '',
-      email_gerant:          $('#pf-email-gerant').val()                 || '',
-      cin_gerant:            $('#pf-cin-gerant').val()                   || '',
-      credit_amount:         $('#pf-credit-slider').val()                || '0',
-      premiere_tranche:      $('#pf-tranche').val()                      || '0',
-      nb_mois:               $('input[name=nb_mois]:checked').val()      || '6',
-      mensualite:            $('#pf-mensualite').val()                   || '0',
-      commentaire:           $('#pf-commentaire').val()                  || '',
+      current_step: nextStep,
+      is_company: $('input[name=is_company]:checked').val() || '0',
+      is_retired: $('input[name=is_retired]:checked').val() || '0',
+      belongs_to_partner: $('#pf_belongs_to_partner').val() || '0',
+      id_organisation: $('#pf-org-select').val() || '0',
+      organisation_autre: $('#pf-org-autre').val() || '',
+      id_address: $('#pf_id_address_hidden').val() || '0',
+      date_naissance: $('#pf-date-naissance').val() || '',
+      cin: $('#pf-cin').val() || '',
+      fonction: $('#pf-fonction').val() || '',
+      raison_sociale: $('#pf-raison-sociale').val() || '',
+      representant_legal: $('#pf-representant-legal').val() || '',
+      date_naissance_gerant: $('#pf-date-naissance-gerant').val() || '',
+      telephone_gerant: $('#pf-telephone-gerant').val() || '',
+      email_gerant: $('#pf-email-gerant').val() || '',
+      cin_gerant: $('#pf-cin-gerant').val() || '',
+      credit_amount: $('#pf-credit-slider').val() || '0',
+      premiere_tranche: $('#pf-tranche').val() || '0',
+      nb_mois: $('input[name=nb_mois]:checked').val() || '6',
+      mensualite: $('#pf-mensualite').val() || '0',
+      commentaire: $('#pf-commentaire').val() || '',
     };
-    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch (e) {}
+    try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch (e) { }
   }
 
   function restoreDraft(draft) {
-    PF.isCompany        = draft.is_company == 1;
-    PF.isRetired        = draft.is_retired == 1;
+    PF.isCompany = draft.is_company == 1;
+    PF.isRetired = draft.is_retired == 1;
     PF.belongsToPartner = draft.belongs_to_partner == 1;
 
     // Step 1 — client type
@@ -694,15 +694,15 @@
     }
 
     // Step 4 — personal / company fields
-    if (draft.date_naissance)        $('#pf-date-naissance').val(draft.date_naissance);
-    if (draft.cin)                    $('#pf-cin').val(draft.cin);
-    if (draft.fonction)               $('#pf-fonction').val(draft.fonction);
-    if (draft.raison_sociale)         $('#pf-raison-sociale').val(draft.raison_sociale);
-    if (draft.representant_legal)     $('#pf-representant-legal').val(draft.representant_legal);
-    if (draft.date_naissance_gerant)  $('#pf-date-naissance-gerant').val(draft.date_naissance_gerant);
-    if (draft.telephone_gerant)       $('#pf-telephone-gerant').val(draft.telephone_gerant);
-    if (draft.email_gerant)           $('#pf-email-gerant').val(draft.email_gerant);
-    if (draft.cin_gerant)             $('#pf-cin-gerant').val(draft.cin_gerant);
+    if (draft.date_naissance) $('#pf-date-naissance').val(draft.date_naissance);
+    if (draft.cin) $('#pf-cin').val(draft.cin);
+    if (draft.fonction) $('#pf-fonction').val(draft.fonction);
+    if (draft.raison_sociale) $('#pf-raison-sociale').val(draft.raison_sociale);
+    if (draft.representant_legal) $('#pf-representant-legal').val(draft.representant_legal);
+    if (draft.date_naissance_gerant) $('#pf-date-naissance-gerant').val(draft.date_naissance_gerant);
+    if (draft.telephone_gerant) $('#pf-telephone-gerant').val(draft.telephone_gerant);
+    if (draft.email_gerant) $('#pf-email-gerant').val(draft.email_gerant);
+    if (draft.cin_gerant) $('#pf-cin-gerant').val(draft.cin_gerant);
 
     // Step 5 — credit
     if (parseFloat(draft.credit_amount) > 0) {

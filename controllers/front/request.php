@@ -7,6 +7,7 @@ require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteRequest
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteOrganisation.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteDocument.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteMonthConfig.php';
+require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/pdf/HTMLTemplateCessionSalairePDF.php';
 
 class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
 {
@@ -380,7 +381,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // --- Send emails ---
-        // $this->module->sendConfirmationEmail($request->id);
+        $this->module->sendConfirmationEmail($request->id);
 
         // --- Redirect to confirmation ---
         if ($id_order && $cart_id_saved) {
@@ -608,12 +609,22 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
 
         $linked = $request->getLinkedOrder();
 
+        $pdf_url = $this->context->link->getModuleLink(
+            'paiementfacilite',
+            'request',
+            ['download_pdf' => 1, 'id_request' => $id_request],
+            true
+        );
+        $admin_email = Configuration::get('PF_ADMIN_EMAIL') ?: Configuration::get('PS_SHOP_EMAIL');
+  
         $this->context->smarty->assign([
-            'pf_request'   => $request,
-            'pf_id_order'  => $linked ? (int) $linked['id_order'] : 0,
-            'pf_order_url' => $linked
+            'pf_request'     => $request,
+            'pf_id_order'    => $linked ? (int) $linked['id_order'] : 0,
+            'pf_order_url'   => $linked
                 ? $this->context->link->getPageLink('order-detail', true, null, ['id_order' => (int) $linked['id_order']])
                 : '',
+            'pf_pdf_url'     => $pdf_url,
+            'pf_admin_email' => $admin_email,
         ]);
 
         $this->setTemplate('module:paiementfacilite/views/templates/front/confirmation.tpl');
@@ -631,8 +642,28 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
      */
     public function postProcess()
     {
-        if (Tools::getValue('confirmed') && Tools::getValue('id_request')) {
+        if (Tools::getValue('download_pdf') && Tools::getValue('id_request')) {
+            $this->handlePdfDownload();
+        } elseif (Tools::getValue('confirmed') && Tools::getValue('id_request')) {
             $this->initContentConfirmation();
         }
+    }
+
+    private function handlePdfDownload()
+    {
+        $id_request = (int) Tools::getValue('id_request');
+        $request    = new PaiementFaciliteRequest($id_request);
+
+        if (
+            !Validate::isLoadedObject($request) ||
+            (int) $request->id_customer !== (int) $this->context->customer->id
+        ) {
+            Tools::redirect($this->context->link->getPageLink('index'));
+            return;
+        }
+
+        $pdf = new HTMLTemplateCessionSalairePDF($request, $this->context->smarty);
+        $pdf->render();
+        exit;
     }
 }

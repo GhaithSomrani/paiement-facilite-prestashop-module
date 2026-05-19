@@ -58,8 +58,31 @@
       </div>
     </div>
 
+    {* Instructions block *}
+    <div class="alert alert-info text-left mb-4" style="max-width:580px; margin:0 auto 1.5rem; font-size:0.97rem; line-height:1.6;">
+      <strong><i class="material-icons" style="vertical-align:middle; font-size:1.2rem;">info</i>
+        {l s='Prochaine étape' mod='paiementfacilite'}</strong><br/><br/>
+      {l s='Veuillez imprimer ce document en 3 exemplaires et le faire signer par votre Paierie et votre Amicale, puis le renvoyer par :' mod='paiementfacilite'}
+      <ul class="mb-0 mt-2" style="padding-left:1.2rem;">
+        <li>
+          {l s='Mail sur l\'adresse :' mod='paiementfacilite'}
+          <strong><a href="mailto:{$pf_admin_email|escape:'html'}">{$pf_admin_email|escape:'html'}</a></strong>
+        </li>
+        <li>{l s='WhatsApp' mod='paiementfacilite'}</li>
+        <li>{l s='Messenger' mod='paiementfacilite'}</li>
+      </ul>
+    </div>
+
+    {* Download button *}
+    <div class="mb-4">
+      <a href="{$pf_pdf_url|escape:'html'}" class="btn btn-success" id="pf-pdf-download-btn">
+        <i class="material-icons" style="vertical-align:middle; font-size:1.1rem; margin-right:4px;">picture_as_pdf</i>
+        {l s='Télécharger le document (Cession sur salaire)' mod='paiementfacilite'}
+      </a>
+    </div>
+
     <p class="text-muted mb-4">
-      {l s='Un email de confirmation vous a été envoyé. Notre équipe traitera votre demande dans les plus brefs délais.' mod='paiementfacilite'}
+      {l s='Notre équipe traitera votre demande dans les plus brefs délais.' mod='paiementfacilite'}
     </p>
 
     <div class="pf-confirm-actions">
@@ -79,4 +102,13 @@
 
   </div>
 </div>
+
+{* Auto-download the PDF when the confirmation page loads *}
+<script>
+  window.addEventListener('load', function () {
+    setTimeout(function () {
+      window.location.href = '{$pf_pdf_url|escape:"javascript"}';
+    }, 800);
+  });
+</script>
 {/block}
