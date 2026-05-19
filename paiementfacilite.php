@@ -12,6 +12,7 @@ require_once dirname(__FILE__) . '/classes/PaiementFaciliteRequest.php';
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteOrganisation.php';
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteDocument.php';
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteStatus.php';
+require_once dirname(__FILE__) . '/classes/PaiementFaciliteMonthConfig.php';
 
 class PaiementFacilite extends PaymentModule
 {
@@ -221,12 +222,25 @@ class PaiementFacilite extends PaymentModule
             return false;
         }
 
+        // Amount ranges tab
+        $tab4 = new Tab();
+        $tab4->active     = 1;
+        $tab4->class_name = 'AdminPaiementFaciliteAmountRanges';
+        $tab4->module     = $this->name;
+        $tab4->id_parent  = (int) $parent->id;
+        foreach (Language::getLanguages() as $lang) {
+            $tab4->name[$lang['id_lang']] = 'Config. mensualités';
+        }
+        if (!$tab4->add()) {
+            return false;
+        }
+
         return true;
     }
 
     private function uninstallTab()
     {
-        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteParent'] as $class) {
+        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges', 'AdminPaiementFaciliteParent'] as $class) {
             $id_tab = (int) Tab::getIdFromClassName($class);
             if ($id_tab) {
                 (new Tab($id_tab))->delete();
@@ -241,8 +255,99 @@ class PaiementFacilite extends PaymentModule
     // CONFIGURATION PAGE
     // -------------------------------------------------------------------------
 
+    // -------------------------------------------------------------------------
+    // UPGRADE / MIGRATION
+    // -------------------------------------------------------------------------
+
+    /**
+     * Idempotent migrations for existing installations.
+     * Called from getContent() so it runs whenever the admin visits config.
+     */
+    private function runUpgrades()
+    {
+        $version = (string) Configuration::get('PF_VERSION');
+
+        // 1.1.0 — add interest_rate to requests + admin tab
+        if (version_compare($version, '1.1.0', '<')) {
+            $cols = Db::getInstance()->executeS(
+                'SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'pf_requests` LIKE "interest_rate"'
+            );
+            if (!$cols) {
+                Db::getInstance()->execute(
+                    'ALTER TABLE `' . _DB_PREFIX_ . 'pf_requests`
+                     ADD COLUMN `interest_rate` decimal(5,2) NOT NULL DEFAULT 0.00 AFTER `nb_mois`'
+                );
+            }
+
+            if (!Tab::getIdFromClassName('AdminPaiementFaciliteAmountRanges')) {
+                $parentId = (int) Tab::getIdFromClassName('AdminPaiementFaciliteParent');
+                if ($parentId) {
+                    $tab = new Tab();
+                    $tab->active     = 1;
+                    $tab->class_name = 'AdminPaiementFaciliteAmountRanges';
+                    $tab->module     = $this->name;
+                    $tab->id_parent  = $parentId;
+                    foreach (Language::getLanguages() as $lang) {
+                        $tab->name[$lang['id_lang']] = 'Config. mensualités';
+                    }
+                    $tab->add();
+                }
+            }
+
+            Configuration::updateValue('PF_VERSION', '1.1.0');
+            $version = '1.1.0';
+        }
+
+        // 1.2.0 — replace pf_amount_ranges with pf_month_configs
+        if (version_compare($version, '1.2.0', '<')) {
+            // Drop the old table if it exists
+            Db::getInstance()->execute(
+                'DROP TABLE IF EXISTS `' . _DB_PREFIX_ . 'pf_amount_ranges`'
+            );
+
+            // Create the per-month config table (min amount to unlock + interest rate)
+            Db::getInstance()->execute(
+                'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_month_configs` (
+                    `id_config`     int(10) unsigned NOT NULL AUTO_INCREMENT,
+                    `nb_mois`       tinyint(3) unsigned NOT NULL,
+                    `min_amount`    decimal(10,2) NOT NULL DEFAULT 0.00,
+                    `interest_rate` decimal(5,2)  NOT NULL DEFAULT 0.00,
+                    `active`        tinyint(1) unsigned NOT NULL DEFAULT 1,
+                    `date_add`      datetime NOT NULL,
+                    `date_upd`      datetime NOT NULL,
+                    PRIMARY KEY (`id_config`),
+                    UNIQUE KEY `nb_mois` (`nb_mois`)
+                ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4'
+            );
+
+            // Drop max_amount column if it was added by a previous version
+            $cols = Db::getInstance()->executeS(
+                'SHOW COLUMNS FROM `' . _DB_PREFIX_ . 'pf_month_configs` LIKE "max_amount"'
+            );
+            if ($cols) {
+                Db::getInstance()->execute(
+                    'ALTER TABLE `' . _DB_PREFIX_ . 'pf_month_configs` DROP COLUMN `max_amount`'
+                );
+            }
+
+            // Update the tab label to reflect the new purpose
+            $tabId = (int) Tab::getIdFromClassName('AdminPaiementFaciliteAmountRanges');
+            if ($tabId) {
+                $tab = new Tab($tabId);
+                foreach (Language::getLanguages() as $lang) {
+                    $tab->name[$lang['id_lang']] = 'Config. mensualités';
+                }
+                $tab->save();
+            }
+
+            Configuration::updateValue('PF_VERSION', '1.2.0');
+        }
+    }
+
     public function getContent()
     {
+        $this->runUpgrades();
+
         $output = '';
 
         if (Tools::isSubmit('submit_pf_config')) {
@@ -375,7 +480,7 @@ class PaiementFacilite extends PaymentModule
     public function hookDisplayBackOfficeHeader()
     {
         $controller = Tools::getValue('controller');
-        $pfControllers = ['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus'];
+        $pfControllers = ['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges'];
 
         if (
             Tools::getValue('configure') === $this->name

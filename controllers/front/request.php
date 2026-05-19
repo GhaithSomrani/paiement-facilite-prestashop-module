@@ -6,6 +6,7 @@ if (!defined('_PS_VERSION_')) {
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteRequest.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteOrganisation.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteDocument.php';
+require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteMonthConfig.php';
 
 class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
 {
@@ -72,6 +73,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $min_amount = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
         $max_amount = (float) (Configuration::get('PF_MAX_AMOUNT') ?: 3000);
 
+        // Per-month configs for interest rate + availability range
+        $month_configs = PaiementFaciliteMonthConfig::getAllConfigsForJs();
+
         // Load cart products for checkout context
         $order_items  = [];
         $order_fees   = [];
@@ -119,6 +123,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $errors_json = $this->context->cookie->pf_errors;
             unset($this->context->cookie->pf_errors);
         }
+        $max_months = Db::getInstance()->getValue('select Max(nb_mois) from ' . _DB_PREFIX_ . 'pf_month_configs');
 
         $this->context->smarty->assign([
             'pf_id_order'             => $id_order,
@@ -128,6 +133,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'pf_organisations'        => $organisations,
             'pf_min_amount'           => $min_amount,
             'pf_max_amount'           => $max_amount,
+            'pf_month_configs_json'   => json_encode($month_configs),
             'pf_default_amount'       => $order_amount ?: 1150,
             'pf_order_items'          => $order_items,
             'pf_order_fees'           => $order_fees,
@@ -139,6 +145,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'customer_firstname'      => $this->context->customer->firstname,
             'customer_lastname'       => $this->context->customer->lastname,
             'customer_email'          => $this->context->customer->email,
+            'max_months'             => $max_months,
             'pf_errors_json'          => $errors_json,
         ]);
 
@@ -275,13 +282,34 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             }
         }
 
-        $min_tranche = round($credit_amount * 0.20, 2);
-        if ($premiere_tranche < $min_tranche) {
-            $errors[] = $this->module->l('La 1ère tranche doit être au minimum 20% du montant.');
+        // --- Per-month config: availability range + interest rate ---
+        $interest_rate = 0.0;
+        $monthConfig   = PaiementFaciliteMonthConfig::getByMonths($nb_mois);
+        if ($monthConfig) {
+            $interest_rate = (float) $monthConfig->interest_rate;
+            $min_cfg       = (float) $monthConfig->min_amount;
+
+            if ($credit_amount < $min_cfg) {
+                $errors[] = sprintf(
+                    $this->module->l('Le montant minimum pour %d mensualités est %s DT.'),
+                    $nb_mois,
+                    number_format($min_cfg, 2, ',', ' ')
+                );
+            }
         }
 
-        $mensualite = ($credit_amount > 0 && $premiere_tranche < $credit_amount)
-            ? round(($credit_amount - $premiere_tranche) / $nb_mois, 2)
+        // Total cost with interest applied on full credit amount
+        $total_with_interest = $credit_amount * (1 + $interest_rate / 100);
+
+        // Minimum première tranche = total ÷ nb_mois
+        $min_tranche = round($total_with_interest / $nb_mois, 2);
+        if ($premiere_tranche < $min_tranche) {
+            $errors[] = $this->module->l('La 1ère tranche doit être au minimum égale à une mensualité.');
+        }
+
+        // Mensualité = remaining balance ÷ (nb_mois - 1)
+        $mensualite = ($nb_mois > 1)
+            ? round(($total_with_interest - $premiere_tranche) / ($nb_mois - 1), 2)
             : 0;
 
         // --- Documents (only if not partner org) ---
@@ -318,6 +346,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $request->premiere_tranche   = $premiere_tranche;
         $request->mensualite         = $mensualite;
         $request->nb_mois            = $nb_mois;
+        $request->interest_rate      = $interest_rate;
         $request->commentaire           = pSQL($commentaire);
         $request->status                = 'pending';
 
@@ -350,7 +379,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         if ($id_order && $cart_id_saved) {
             // Checkout flow: use PS native order-confirmation page
             $url = $this->context->link->getPageLink(
-                'order-confirmation', true, null,
+                'order-confirmation',
+                true,
+                null,
                 [
                     'id_cart'   => $cart_id_saved,
                     'id_module' => (int) $this->module->id,
@@ -406,7 +437,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
                 'PaiementFacilite: validateOrder failed for request #' . $id_request . ' — ' . $e->getMessage(),
-                3, null, 'PaiementFaciliteRequest', $id_request
+                3,
+                null,
+                'PaiementFaciliteRequest',
+                $id_request
             );
             return 0;
         }
@@ -516,8 +550,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $address->id_country   = (int) Configuration::get('PS_COUNTRY_DEFAULT');
 
         // Validate required fields
-        if (empty($address->firstname) || empty($address->lastname) ||
-            empty($address->address1) || empty($address->city)) {
+        if (
+            empty($address->firstname) || empty($address->lastname) ||
+            empty($address->address1) || empty($address->city)
+        ) {
             $this->ajaxReturn(['success' => false, 'error' => 'Champs obligatoires manquants.']);
             return;
         }

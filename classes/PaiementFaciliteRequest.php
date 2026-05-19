@@ -47,6 +47,8 @@ class PaiementFaciliteRequest extends ObjectModel
     public $mensualite = 0.00;
     /** @var int */
     public $nb_mois = 6;
+    /** @var float */
+    public $interest_rate = 0.00;
     /** @var string|null */
     public $commentaire;
     /** @var string */
@@ -81,6 +83,7 @@ class PaiementFaciliteRequest extends ObjectModel
             'premiere_tranche'      => ['type' => self::TYPE_FLOAT,  'validate' => 'isPrice'],
             'mensualite'            => ['type' => self::TYPE_FLOAT,  'validate' => 'isPrice'],
             'nb_mois'               => ['type' => self::TYPE_INT,    'validate' => 'isUnsignedInt'],
+            'interest_rate'         => ['type' => self::TYPE_FLOAT,  'validate' => 'isFloat'],
             'commentaire'           => ['type' => self::TYPE_STRING, 'validate' => 'isCleanHtml'],
             'status'                => ['type' => self::TYPE_STRING, 'validate' => 'isGenericName', 'size' => 16],
             'date_add'              => ['type' => self::TYPE_DATE,   'validate' => 'isDate'],

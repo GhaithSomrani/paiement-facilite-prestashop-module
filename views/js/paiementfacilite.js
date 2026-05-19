@@ -167,53 +167,141 @@
 
   /* ── Step 5 — credit slider + month selector ── */
   function initCreditSlider() {
-    var $slider  = $('#pf-credit-slider');
-    var $display = $('#pf-amount-display');
-    var $tranche = $('#pf-tranche');
-    var $mensual = $('#pf-mensualite');
-    var $mDisp   = $('#pf-mensualite-display');
+    var $slider   = $('#pf-credit-slider');
+    var $display  = $('#pf-amount-display');
+    var $tranche  = $('#pf-tranche');
+    var $mensual  = $('#pf-mensualite');
+    var $mDisp    = $('#pf-mensualite-display');
     var $moisDisp = $('#pf-mois-display');
+
+    // monthConfigs is keyed by nb_mois (string): {minAmount, interestRate}
+    var monthConfigs = (PF_CONFIG && PF_CONFIG.monthConfigs) ? PF_CONFIG.monthConfigs : {};
 
     function getNbMois() {
       var val = parseInt($('input[name=nb_mois]:checked').val(), 10);
       return val > 0 ? val : 12;
     }
 
+    // Return config for nb_mois, or null if no config defined
+    function getMonthConfig(nbMois) {
+      return monthConfigs[String(nbMois)] || null;
+    }
+
+    // Enable/disable each month button: disabled when credit < min_amount for that month.
+    // Auto-selects the first available month if the current selection becomes disabled.
+    function updateMonthButtons(amount) {
+      var currentMois  = getNbMois();
+      var currentValid = true;
+
+      $('#pf-mois-row .pf-toggle-btn').each(function () {
+        var m   = parseInt($(this).data('mois'), 10);
+        var cfg = getMonthConfig(m);
+        var ok  = !cfg || (amount >= cfg.minAmount);
+
+        if (ok) {
+          $(this).removeClass('pf-mois-disabled').prop('disabled', false);
+        } else {
+          $(this).addClass('pf-mois-disabled').prop('disabled', true);
+          if (m === currentMois) currentValid = false;
+        }
+      });
+
+      // If selected month is no longer valid, pick the first available one
+      if (!currentValid) {
+        var $first = $('#pf-mois-row .pf-toggle-btn:not(.pf-mois-disabled)').first();
+        if ($first.length) {
+          $('#pf-mois-row .pf-toggle-btn').removeClass('is-selected');
+          $first.addClass('is-selected');
+          $first.find('input[type=radio]').prop('checked', true);
+        }
+      }
+    }
+
     function recalc() {
       var amount  = parseFloat($slider.val()) || 0;
-      var minTr   = Math.ceil(amount * 0.20 * 100) / 100;
       var tranche = parseFloat($tranche.val()) || 0;
-      var nbMois  = getNbMois();
 
-      // Update slider visual fill
-      var pct = ((amount - $slider.attr('min')) / ($slider.attr('max') - $slider.attr('min'))) * 100;
-      $slider.css('--fill', pct.toFixed(1) + '%');
+      // Update month button availability for this amount, then read selection
+      updateMonthButtons(amount);
+      var nbMois = getNbMois();
+
+      // Interest rate comes from the selected month's config
+      var cfg          = getMonthConfig(nbMois);
+      var interestRate = cfg ? cfg.interestRate : 0;
+
+      // Total cost = full credit × (1 + rate%)
+      var totalWithInterest = Math.round(amount * (1 + interestRate / 100) * 10000) / 10000;
+
+      // Minimum première tranche = total ÷ nb_mois
+      var minTr = Math.round(totalWithInterest / nbMois * 100) / 100;
+
+      // Update slider fill (range inputs only)
+      if ($slider.attr('type') === 'range') {
+        var pct = ((amount - parseFloat($slider.attr('min'))) /
+                   (parseFloat($slider.attr('max')) - parseFloat($slider.attr('min')))) * 100;
+        $slider.css('--fill', pct.toFixed(1) + '%');
+      }
 
       $display.text(amount.toFixed(0));
       $moisDisp.text(nbMois);
 
       $tranche.attr('min', minTr.toFixed(2));
-      if (tranche < minTr || !$tranche.data('user-edited')) {
+      if (!$tranche.data('user-edited')) {
         $tranche.val(minTr.toFixed(2));
-        tranche = minTr;
       }
 
-      var mensualite = (amount - tranche) / nbMois;
-      mensualite = mensualite > 0 ? Math.round(mensualite * 100) / 100 : 0;
+      // Show inline error if tranche is below minimum, but don't override the value
+      var trancheVal = parseFloat($tranche.val()) || 0;
+      var $trancheErr = $('#pf-tranche-error');
+      if ($tranche.data('user-edited') && trancheVal < minTr) {
+        $trancheErr.text('Montant minimum : ' + minTr.toFixed(2) + ' DT').show();
+        $tranche.css('border-color', '#c0392b');
+        trancheVal = minTr; // use min for mensualité display only
+      } else {
+        $trancheErr.hide();
+        $tranche.css('border-color', '');
+      }
+
+      var mensualite = (nbMois > 1)
+        ? Math.round((totalWithInterest - trancheVal) / (nbMois - 1) * 100) / 100
+        : 0;
+
       $mensual.val(mensualite.toFixed(2));
       $mDisp.text(mensualite.toFixed(2));
+
+      // Interest info badge
+      var $badge = $('#pf-interest-badge');
+      if ($badge.length) {
+        if (interestRate > 0) {
+          var interestAmt = Math.round((totalWithInterest - amount) * 100) / 100;
+          $badge
+            .html('Total avec intérêts&nbsp;: <strong>' + totalWithInterest.toFixed(2) + ' DT</strong>' +
+                  ' &mdash; Taux&nbsp;: <strong>' + interestRate.toFixed(2) + ' %</strong>' +
+                  ' &mdash; Intérêts&nbsp;: <strong>' + interestAmt.toFixed(2) + ' DT</strong>')
+            .show();
+        } else {
+          $badge.hide();
+        }
+      }
+
+      // Store resolved rate for form submission (server re-validates independently)
+      $('#pf-interest-rate').val(interestRate.toFixed(2));
     }
 
-    $slider.on('input change', recalc);
+    $slider.on('input change', function () {
+      $tranche.data('user-edited', false);
+      recalc();
+    });
     $tranche.on('input', function () {
       $(this).data('user-edited', true);
       recalc();
     });
-    // Month toggle buttons
     $('#pf-mois-row').on('click', '.pf-toggle-btn', function () {
+      if ($(this).hasClass('pf-mois-disabled')) return false;
       $('#pf-mois-row .pf-toggle-btn').removeClass('is-selected');
       $(this).addClass('is-selected');
       $(this).find('input[type=radio]').prop('checked', true);
+      $tranche.data('user-edited', false);
       recalc();
     });
 
@@ -350,12 +438,18 @@
       case 5:
         var amount  = parseFloat($('#pf-credit-slider').val()) || 0;
         var tranche = parseFloat($('#pf-tranche').val()) || 0;
+        var nbMoisV = parseInt($('input[name=nb_mois]:checked').val(), 10) || 12;
+        var cfgV    = (PF_CONFIG.monthConfigs && PF_CONFIG.monthConfigs[String(nbMoisV)]) || null;
+        var rateV   = cfgV ? cfgV.interestRate : 0;
+        var totalV  = Math.round(amount * (1 + rateV / 100) * 10000) / 10000;
         // Only check min/max range for standalone (free-slider) requests
         if (!PF_CONFIG.isFromCheckout && (amount < PF_CONFIG.minAmount || amount > PF_CONFIG.maxAmount)) {
           errors.push('Le montant doit être entre ' + PF_CONFIG.minAmount + ' DT et ' + PF_CONFIG.maxAmount + ' DT.');
         }
-        if (tranche < amount * 0.20 - 0.01) {
-          errors.push('La 1ère tranche doit représenter au minimum 20% du montant.');
+        // Min tranche = total / nb_mois
+        var minTrV = Math.round(totalV / nbMoisV * 100) / 100;
+        if (tranche < minTrV - 0.01) {
+          errors.push('La 1ère tranche minimum est ' + minTrV.toFixed(2) + ' DT (total ÷ ' + nbMoisV + ' mois).');
         }
         break;
 

@@ -44,6 +44,7 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_requests` (
     `premiere_tranche` decimal(10,2) NOT NULL DEFAULT 0.00,
     `mensualite` decimal(10,2) NOT NULL DEFAULT 0.00,
     `nb_mois` tinyint(3) unsigned NOT NULL DEFAULT 6,
+    `interest_rate` decimal(5,2) NOT NULL DEFAULT 0.00,
     `commentaire` text DEFAULT NULL,
     `status` enum(\'pending\',\'approved_mode\',\'rejected_mode\',\'approved_emp\',\'rejected_emp\') NOT NULL DEFAULT \'pending\',
     `date_add` datetime NOT NULL,
@@ -91,6 +92,19 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_statuses` (
     `date_upd` datetime NOT NULL,
     PRIMARY KEY (`id_pf_status`),
     UNIQUE KEY `code` (`code`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
+// Per-month configuration: minimum credit amount to unlock + interest rate
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_month_configs` (
+    `id_config`     int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `nb_mois`       tinyint(3) unsigned NOT NULL,
+    `min_amount`    decimal(10,2) NOT NULL DEFAULT 0.00,
+    `interest_rate` decimal(5,2)  NOT NULL DEFAULT 0.00,
+    `active`        tinyint(1) unsigned NOT NULL DEFAULT 1,
+    `date_add`      datetime NOT NULL,
+    `date_upd`      datetime NOT NULL,
+    PRIMARY KEY (`id_config`),
+    UNIQUE KEY `nb_mois` (`nb_mois`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
 
 // Seed the 5 workflow statuses (INSERT IGNORE — safe to re-run)

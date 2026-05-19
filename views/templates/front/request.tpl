@@ -266,38 +266,46 @@
           <table style="width:100%;border-collapse:collapse;font-size:14px;margin-bottom:4px;">
             <thead>
               <tr style="background:#f1f3f5;">
-                <th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">{l s='Produit' mod='paiementfacilite'}</th>
-                <th style="padding:8px 10px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">{l s='Qté' mod='paiementfacilite'}</th>
-                <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">{l s='P.U.' mod='paiementfacilite'}</th>
-                <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">{l s='Total' mod='paiementfacilite'}</th>
+                <th style="padding:8px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">
+                  {l s='Produit' mod='paiementfacilite'}</th>
+                <th
+                  style="padding:8px 10px;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">
+                  {l s='Qté' mod='paiementfacilite'}</th>
+                <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">
+                  {l s='P.U.' mod='paiementfacilite'}</th>
+                <th style="padding:8px 10px;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:.05em;">
+                  {l s='Total' mod='paiementfacilite'}</th>
               </tr>
             </thead>
             <tbody>
               {foreach $pf_order_items as $item}
-              <tr style="border-bottom:1px solid #e9ecef;">
-                <td style="padding:10px 10px;">{$item.name|escape:'html'}</td>
-                <td style="padding:10px;text-align:center;color:#555;">{$item.qty}</td>
-                <td style="padding:10px;text-align:right;white-space:nowrap;">{$item.unit|string_format:"%.3f"} DT</td>
-                <td style="padding:10px;text-align:right;white-space:nowrap;font-weight:600;">{$item.total|string_format:"%.3f"} DT</td>
-              </tr>
+                <tr style="border-bottom:1px solid #e9ecef;">
+                  <td style="padding:10px 10px;">{$item.name|escape:'html'}</td>
+                  <td style="padding:10px;text-align:center;color:#555;">{$item.qty}</td>
+                  <td style="padding:10px;text-align:right;white-space:nowrap;">{$item.unit|string_format:"%.3f"} DT</td>
+                  <td style="padding:10px;text-align:right;white-space:nowrap;font-weight:600;">
+                    {$item.total|string_format:"%.3f"} DT</td>
+                </tr>
               {/foreach}
             </tbody>
             {if $pf_order_fees}
-            <tbody>
-              {foreach $pf_order_fees as $fee}
-              <tr style="border-bottom:1px solid #e9ecef;color:#555;">
-                <td colspan="3" style="padding:8px 10px;">{$fee.label|escape:'html'}</td>
-                <td style="padding:8px 10px;text-align:right;white-space:nowrap;">
-                  {if $fee.sign == -1}−{/if}{$fee.amount|string_format:"%.3f"} DT
-                </td>
-              </tr>
-              {/foreach}
-            </tbody>
+              <tbody>
+                {foreach $pf_order_fees as $fee}
+                  <tr style="border-bottom:1px solid #e9ecef;color:#555;">
+                    <td colspan="3" style="padding:8px 10px;">{$fee.label|escape:'html'}</td>
+                    <td style="padding:8px 10px;text-align:right;white-space:nowrap;">
+                      {if $fee.sign == -1}−{/if}{$fee.amount|string_format:"%.3f"} DT
+                    </td>
+                  </tr>
+                {/foreach}
+              </tbody>
             {/if}
             <tfoot>
               <tr style="background:#f8f9fa;">
-                <td colspan="3" style="padding:12px 10px;font-weight:700;font-size:15px;">{l s='Montant total du crédit' mod='paiementfacilite'}</td>
-                <td style="padding:12px 10px;text-align:right;font-weight:700;font-size:18px;color:#1a1a1a;white-space:nowrap;">
+                <td colspan="3" style="padding:12px 10px;font-weight:700;font-size:15px;">
+                  {l s='Montant total du crédit' mod='paiementfacilite'}</td>
+                <td
+                  style="padding:12px 10px;text-align:right;font-weight:700;font-size:18px;color:#1a1a1a;white-space:nowrap;">
                   <span id="pf-amount-display">{$pf_order_amount|string_format:"%.3f"}</span> DT
                 </td>
               </tr>
@@ -310,9 +318,8 @@
             {l s='Fourchette de votre crédit' mod='paiementfacilite'}
             ({$pf_min_amount|intval} DT – {$pf_max_amount|intval} DT) *
           </p>
-          <input type="range" name="credit_amount" id="pf-credit-slider" class="pf-slider"
-            min="{$pf_min_amount|intval}" max="{$pf_max_amount|intval}"
-            step="50" value="{$pf_default_amount|intval}">
+          <input type="range" name="credit_amount" id="pf-credit-slider" class="pf-slider" min="{$pf_min_amount|intval}"
+            max="{$pf_max_amount|intval}" step="50" value="{$pf_default_amount|intval}">
           <div class="pf-slider-row">
             <span>{$pf_min_amount|intval} DT</span>
             <span class="pf-slider-current"><span id="pf-amount-display">{$pf_default_amount|intval}</span> DT</span>
@@ -322,17 +329,24 @@
 
         <p class="pf-slider-label" style="margin-top:24px;">{l s='Nombre de mensualités' mod='paiementfacilite'} *</p>
         <div class="pf-toggle-row pf-toggle-row--wrap" id="pf-mois-row">
-          {for $m = 2 to 12}
+          {for $m = 2 to $max_months}
             <label class="pf-toggle-btn{if $m == 6} is-selected{/if}" data-mois="{$m}">
               <input type="radio" name="nb_mois" value="{$m}" {if $m == 6} checked{/if}> {$m}
             </label>
           {/for}
         </div>
 
+        {* Interest info — shown by JS only when a range with interest applies *}
+        <div id="pf-interest-badge"
+          style="display:none;margin:12px 0;padding:10px 14px;background:#fff8e1;border:1px solid #ffe082;border-radius:6px;font-size:13px;color:#795548;">
+        </div>
+        <input type="hidden" name="interest_rate" id="pf-interest-rate" value="0">
+
         <div class="pf-credit-boxes">
           <div class="pf-credit-box">
-            <div class="pf-credit-box-label">{l s='1ère tranche (min 20%)' mod='paiementfacilite'}</div>
+            <div class="pf-credit-box-label">{l s='1ère tranche (min = 1 mensualité)' mod='paiementfacilite'}</div>
             <input type="number" name="premiere_tranche" id="pf-tranche" step="0.01" required placeholder="0.00">
+            <small id="pf-tranche-error" style="display:none;color:#c0392b;font-size:12px;margin-top:4px;"></small>
           </div>
           <div class="pf-credit-box">
             <div class="pf-credit-box-label">{l s='Mensualité' mod='paiementfacilite'} (<span
@@ -349,7 +363,8 @@
 
         <div class="pf-nav">
           <button type="button" class="pf-btn-prev pf-prev-btn">← {l s='Précédent' mod='paiementfacilite'}</button>
-          <button type="button" class="pf-btn-next pf-next-btn" id="pf-step5-next">{l s='Suivant' mod='paiementfacilite'} →</button>
+          <button type="button" class="pf-btn-next pf-next-btn" id="pf-step5-next">{l s='Suivant' mod='paiementfacilite'}
+            →</button>
         </div>
       </section>
 
@@ -515,6 +530,7 @@
       hasAddresses:   {if $pf_addresses}true{else}false{/if},
       errorsJson:     {if $pf_errors_json}'{$pf_errors_json|escape:'javascript'}'{else}null{/if},
       orderAmount:    {$pf_order_amount|floatval},
+      monthConfigs:   {$pf_month_configs_json nofilter},
     };
   </script>
 
