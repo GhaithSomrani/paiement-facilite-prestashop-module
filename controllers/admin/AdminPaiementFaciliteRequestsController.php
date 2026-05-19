@@ -7,6 +7,7 @@ require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteRequest
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteOrganisation.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteDocument.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteStatus.php';
+require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteMonthConfig.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/pdf/HTMLTemplateCessionSalairePDF.php';
 
 class AdminPaiementFaciliteRequestsController extends ModuleAdminController
@@ -205,6 +206,10 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         $status_name  = $statusRow ? $statusRow['name'] : $request->status;
         $status_color = $statusRow ? $statusRow['color'] : '#888888';
 
+        $monthConfigs       = PaiementFaciliteMonthConfig::getAllConfigsForJs();
+        $interest_rate      = (float) $request->interest_rate;
+        $total_with_interest = $request->credit_amount * (1 + $interest_rate / 100);
+
         $this->context->smarty->assign([
             'pf_request'             => $request,
             'pf_customer'            => $customer,
@@ -223,6 +228,8 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             'pf_reject_emp_url'      => $base_url . '&action=rejectEmployeur',
             'pf_back_url'            => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
             'doc_labels'             => $this->getDocLabels(),
+            'pf_total_with_interest' => round($total_with_interest, 2),
+            'pf_interest_amount'     => round($total_with_interest - $request->credit_amount, 2),
         ]);
 
         return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'paiementfacilite/views/templates/admin/view_request.tpl');
@@ -467,6 +474,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         $pf_addresses       = [];
         $pf_orders          = [];
         $pf_linked_order_id = 0;
+        $pf_customer_birthday = '';
         if (!$is_add && $obj->id_customer) {
             $pf_customer = new Customer((int) $obj->id_customer);
             if (!Validate::isLoadedObject($pf_customer)) {
@@ -474,6 +482,12 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             } else {
                 $pf_addresses = $pf_customer->getAddresses((int) $this->context->language->id);
                 $pf_orders    = $this->getCustomerOrdersForSelect((int) $obj->id_customer);
+                if (empty($obj->date_naissance)
+                    && !empty($pf_customer->birthday)
+                    && $pf_customer->birthday !== '0000-00-00'
+                ) {
+                    $pf_customer_birthday = $pf_customer->birthday;
+                }
             }
             $linked = $obj->getLinkedOrder();
             $pf_linked_order_id = $linked ? (int) $linked['id_order'] : 0;
@@ -487,20 +501,22 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         unset($doc);
 
         $this->context->smarty->assign([
-            'pf_obj'             => $obj,
-            'pf_is_add'          => $is_add,
-            'pf_organisations'   => $orgs,
-            'pf_customer'        => $pf_customer,
-            'pf_addresses'       => $pf_addresses,
-            'pf_orders'          => $pf_orders,
-            'pf_linked_order_id' => $pf_linked_order_id,
-            'pf_docs'            => $docs,
-            'pf_doc_count'       => count($docs),
-            'pf_all_statuses'    => PaiementFaciliteStatus::getAll(),
-            'doc_labels'         => $this->getDocLabels(),
-            'pf_form_action'     => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
-            'pf_back_url'        => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
-            'pf_ajax_url'        => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_obj'              => $obj,
+            'pf_is_add'           => $is_add,
+            'pf_organisations'    => $orgs,
+            'pf_customer'         => $pf_customer,
+            'pf_addresses'        => $pf_addresses,
+            'pf_orders'           => $pf_orders,
+            'pf_linked_order_id'  => $pf_linked_order_id,
+            'pf_docs'             => $docs,
+            'pf_doc_count'        => count($docs),
+            'pf_all_statuses'     => PaiementFaciliteStatus::getAll(),
+            'doc_labels'          => $this->getDocLabels(),
+            'pf_form_action'      => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_back_url'         => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_ajax_url'         => $this->context->link->getAdminLink('AdminPaiementFaciliteRequests'),
+            'pf_month_configs_json'   => json_encode(PaiementFaciliteMonthConfig::getAllConfigsForJs()),
+            'pf_customer_birthday'    => $pf_customer_birthday,
         ]);
 
         return $this->context->smarty->fetch(
@@ -534,21 +550,47 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             }
         }
 
-        if ($this->errors) {
-            return false;
-        }
-
         // ── Normalize ──────────────────────────────────────────
         $nb_mois = (int) Tools::getValue('nb_mois');
         if ($nb_mois < 2 || $nb_mois > 12) {
-            $_POST['nb_mois'] = 6;
+            $nb_mois = 6;
+            $_POST['nb_mois'] = $nb_mois;
         }
 
         $credit  = (float) Tools::getValue('credit_amount');
         $tranche = (float) Tools::getValue('premiere_tranche');
-        $nb      = (int) ($_POST['nb_mois'] ?? $nb_mois);
-        if ((float) Tools::getValue('mensualite') <= 0 && $credit > 0 && $tranche < $credit && $nb > 0) {
-            $_POST['mensualite'] = round(($credit - $tranche) / $nb, 2);
+
+        // Look up interest rate for the selected month count (0 for partner-org members)
+        $belongs_to_partner = (int) Tools::getValue('belongs_to_partner');
+        $interest_rate = 0.0;
+        $monthConfig   = PaiementFaciliteMonthConfig::getByMonths($nb_mois);
+        if ($monthConfig && !$belongs_to_partner) {
+            $interest_rate = (float) $monthConfig->interest_rate;
+            $min_cfg       = (float) $monthConfig->min_amount;
+            if ($credit < $min_cfg) {
+                $this->errors[] = sprintf(
+                    $this->l('Le montant minimum pour %d mensualités est %.2f DT.'),
+                    $nb_mois,
+                    $min_cfg
+                );
+            }
+        }
+        $_POST['interest_rate'] = $interest_rate;
+
+        // Total with interest, minimum tranche and mensualité
+        $total_with_interest = $credit * (1 + $interest_rate / 100);
+        $min_tranche         = round($total_with_interest / $nb_mois, 2);
+
+        if ($credit > 0 && $tranche < $min_tranche) {
+            $this->errors[] = $this->l('La 1ère tranche doit être au minimum égale à une mensualité.');
+        }
+
+        $_POST['mensualite'] = ($nb_mois > 1 && $credit > 0)
+            ? round(($total_with_interest - $tranche) / ($nb_mois - 1), 2)
+            : 0;
+
+        if ($this->errors) {
+            return false;
         }
 
         if ($id_org <= 0) {
@@ -712,7 +754,7 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         }
         $like = '%' . pSQL($q) . '%';
         $rows = Db::getInstance()->executeS(
-            'SELECT c.id_customer, c.firstname, c.lastname, c.email,
+            'SELECT c.id_customer, c.firstname, c.lastname, c.email, c.birthday,
                     (SELECT a.phone FROM `' . _DB_PREFIX_ . 'address` a
                      WHERE a.id_customer = c.id_customer AND a.deleted = 0
                      LIMIT 1) AS phone
@@ -734,12 +776,16 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
 
         $out = [];
         foreach ($rows as $r) {
+            $birthday = (!empty($r['birthday']) && $r['birthday'] !== '0000-00-00')
+                ? $r['birthday']
+                : '';
             $out[] = [
-                'id'    => (int) $r['id_customer'],
-                'label' => $r['firstname'] . ' ' . $r['lastname'] . ' — ' . $r['email']
+                'id'       => (int) $r['id_customer'],
+                'label'    => $r['firstname'] . ' ' . $r['lastname'] . ' — ' . $r['email']
                     . ($r['phone'] ? ' — ' . $r['phone'] : ''),
-                'name'  => $r['firstname'] . ' ' . $r['lastname'],
-                'email' => $r['email'],
+                'name'     => $r['firstname'] . ' ' . $r['lastname'],
+                'email'    => $r['email'],
+                'birthday' => $birthday,
             ];
         }
         die(json_encode($out));

@@ -207,7 +207,7 @@
         </label>
         <div class="col-lg-3">
           <input type="date" name="date_naissance" id="pf-date-naissance" class="form-control"
-                 value="{$pf_obj->date_naissance|escape:'html'}">
+                 value="{if $pf_obj->date_naissance}{$pf_obj->date_naissance|escape:'html'}{else}{$pf_customer_birthday|escape:'html'}{/if}">
         </div>
       </div>
 
@@ -326,20 +326,14 @@
     </div>
     <div class="panel-body">
 
+      <input type="hidden" name="interest_rate" id="pf-interest-rate" value="{$pf_obj->interest_rate|floatval}">
+
       <div class="row pf-credit-row">
         <div class="col-sm-3">
           <div class="form-group">
             <label>{l s='Montant (DT)' mod='paiementfacilite'} <span class="required">*</span></label>
             <input type="number" step="0.01" min="0" name="credit_amount" id="pf-credit-amount"
                    class="form-control" value="{$pf_obj->credit_amount|floatval}">
-          </div>
-        </div>
-        <div class="col-sm-3">
-          <div class="form-group">
-            <label>{l s='1ère tranche (DT)' mod='paiementfacilite'}</label>
-            <input type="number" step="0.01" min="0" name="premiere_tranche"
-                   id="pf-premiere-tranche" class="form-control"
-                   value="{$pf_obj->premiere_tranche|floatval}">
           </div>
         </div>
         <div class="col-sm-2">
@@ -356,15 +350,24 @@
         </div>
         <div class="col-sm-3">
           <div class="form-group">
-            <label>
-              {l s='Mensualité (DT)' mod='paiementfacilite'}
-              <small class="text-muted">({l s='auto si 0' mod='paiementfacilite'})</small>
-            </label>
+            <label>{l s='1ère tranche (DT)' mod='paiementfacilite'} <small class="text-muted">{l s='min = 1 mensualité' mod='paiementfacilite'}</small></label>
+            <input type="number" step="0.01" min="0" name="premiere_tranche"
+                   id="pf-premiere-tranche" class="form-control"
+                   value="{$pf_obj->premiere_tranche|floatval}">
+            <small id="pf-tranche-error" style="display:none;color:#c0392b;font-size:12px;margin-top:3px;"></small>
+          </div>
+        </div>
+        <div class="col-sm-3">
+          <div class="form-group">
+            <label>{l s='Mensualité (DT)' mod='paiementfacilite'} <small class="text-muted">{l s='calculée auto' mod='paiementfacilite'}</small></label>
             <input type="number" step="0.01" min="0" name="mensualite" id="pf-mensualite"
-                   class="form-control" value="{$pf_obj->mensualite|floatval}">
+                   class="form-control" readonly style="background:#f5f5f5;"
+                   value="{$pf_obj->mensualite|floatval}">
           </div>
         </div>
       </div>
+
+      <div id="pf-interest-badge" style="display:none;padding:8px 12px;background:#fff8e1;border:1px solid #ffe082;border-radius:4px;font-size:13px;color:#795548;margin-bottom:15px;"></div>
 
       <div class="form-group">
         <label class="control-label col-lg-3">{l s='Commentaire' mod='paiementfacilite'}</label>
@@ -748,6 +751,9 @@
     $('#pf-customer-dropdown').hide().empty();
     $('#pf-customer-clear').show();
     loadAddresses(r.id);
+    if (r.birthday && !$('#pf-date-naissance').val()) {
+      $('#pf-date-naissance').val(r.birthday);
+    }
   });
 
   $(document).on('click', function (e) {
@@ -851,28 +857,84 @@
     updateCompanySection();
   });
 
+  /* ── Month configs from server ── */
+  var pfMonthConfigs = {$pf_month_configs_json nofilter};
+  var pfTrancheDirty = false;
+
+  function getMonthConfig(nb) {
+    return pfMonthConfigs[String(nb)] || null;
+  }
+
   /* ── Credit calculations ── */
   function recalcCredit() {
     var credit = parseFloat($('#pf-credit-amount').val()) || 0;
     var nb     = parseInt($('#pf-nb-mois').val()) || 6;
 
-    // Enforce 20% minimum on premiere_tranche
-    var minTranche = Math.ceil(credit * 0.20 * 100) / 100;
-    var tranche    = parseFloat($('#pf-premiere-tranche').val()) || 0;
-    if (credit > 0 && tranche < minTranche) {
-      tranche = minTranche;
-      $('#pf-premiere-tranche').val(tranche.toFixed(2));
+    // Interest rate from month config (0 for partner-org members)
+    var isPartner    = parseInt($('#pf-belongs-to-partner').val()) === 1;
+    var cfg          = getMonthConfig(nb);
+    var interestRate = (!isPartner && cfg) ? cfg.interestRate : 0;
+
+    // Total with interest
+    var total = Math.round(credit * (1 + interestRate / 100) * 10000) / 10000;
+
+    // Min tranche = total / nb_mois
+    var minTr = Math.round(total / nb * 100) / 100;
+
+    var $tranche = $('#pf-premiere-tranche');
+    var $err     = $('#pf-tranche-error');
+
+    if (!pfTrancheDirty) {
+      $tranche.val(minTr.toFixed(2));
     }
 
-    // Recalculate mensualite
-    if (credit > 0 && tranche < credit && nb > 0) {
-      $('#pf-mensualite').val(Math.round(((credit - tranche) / nb) * 100) / 100);
+    var trancheVal = parseFloat($tranche.val()) || 0;
+
+    // Show/hide inline error
+    if (pfTrancheDirty && trancheVal < minTr) {
+      $err.text('Montant minimum : ' + minTr.toFixed(2) + ' DT').show();
+      $tranche.css('border-color', '#c0392b');
+      trancheVal = minTr;
     } else {
-      $('#pf-mensualite').val('0.00');
+      $err.hide();
+      $tranche.css('border-color', '');
+    }
+
+    // Mensualité = (total - tranche) / (nb - 1)
+    var mensualite = (nb > 1 && credit > 0)
+      ? Math.round((total - trancheVal) / (nb - 1) * 100) / 100
+      : 0;
+    $('#pf-mensualite').val(mensualite.toFixed(2));
+
+    // Store resolved interest rate
+    $('#pf-interest-rate').val(interestRate.toFixed(2));
+
+    // Interest badge
+    var $badge = $('#pf-interest-badge');
+    if (interestRate > 0 && credit > 0) {
+      var interestAmt = Math.round((total - credit) * 100) / 100;
+      $badge.html(
+        'Total avec intérêts&nbsp;: <strong>' + total.toFixed(2) + ' DT</strong>' +
+        ' &mdash; Taux&nbsp;: <strong>' + interestRate.toFixed(2) + ' %</strong>' +
+        ' &mdash; Intérêts&nbsp;: <strong>' + interestAmt.toFixed(2) + ' DT</strong>'
+      ).show();
+    } else {
+      $badge.hide();
     }
   }
 
-  $('#pf-credit-amount, #pf-premiere-tranche, #pf-nb-mois').on('input change', recalcCredit);
+  $('#pf-credit-amount').on('input change', function () {
+    pfTrancheDirty = false;
+    recalcCredit();
+  });
+  $('#pf-nb-mois').on('change', function () {
+    pfTrancheDirty = false;
+    recalcCredit();
+  });
+  $('#pf-premiere-tranche').on('input', function () {
+    pfTrancheDirty = true;
+    recalcCredit();
+  });
 
   /* ── Delete document ── */
   $(document).on('click', '.pf-doc-delete', function () {
@@ -943,6 +1005,8 @@
   updateDocSections();
   updateCompanySection();
   disableHiddenDocs();
+  pfTrancheDirty = ({$pf_obj->premiere_tranche|floatval} > 0);
+  recalcCredit();
   // Docs panel: hide on load when a partner org is already selected
   var initOrg = parseInt($('#pf-org-select').val()) || 0;
   $('#pf-docs-panel').toggle(initOrg <= 0);

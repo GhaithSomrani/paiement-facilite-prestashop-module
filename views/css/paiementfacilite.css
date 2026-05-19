@@ -222,6 +222,11 @@
   pointer-events: none;
 }
 
+.pf-step.pf-step-skipped {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
 /* ── Form fields ── */
 .pf-field {
   margin-bottom: 16px;
@@ -520,8 +525,8 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-top: 28px;
   padding-top: 20px;
+  gap: 20px;
   border-top: 1px solid var(--pf-line);
 }
 
@@ -569,7 +574,6 @@
 .pf-submit-btn {
   display: block;
   width: 100%;
-  margin-top: 20px;
   padding: 22px;
   background: var(--pf-black);
   color: var(--pf-white);

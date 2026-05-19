@@ -33,7 +33,7 @@
           class="pf-step-num">1</span><small>{l s='Type' mod='paiementfacilite'}</small></div>
       <div class="pf-step" data-step="2"><span
           class="pf-step-num">2</span><small>{l s='Organisme' mod='paiementfacilite'}</small></div>
-      <div class="pf-step" data-step="3"><span
+      <div class="pf-step{if $pf_is_from_checkout} pf-step-skipped{/if}" data-step="3"><span
           class="pf-step-num">3</span><small>{l s='Adresse' mod='paiementfacilite'}</small></div>
       <div class="pf-step" data-step="4"><span
           class="pf-step-num">4</span><small>{l s='Infos' mod='paiementfacilite'}</small></div>

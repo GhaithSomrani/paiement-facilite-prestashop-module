@@ -161,28 +161,41 @@
       <div class="panel-heading">{l s='Détails du crédit' mod='paiementfacilite'}</div>
       <div class="panel-body">
         <div class="row">
-          <div class="col-sm-3">
+          <div class="col-sm-2">
             <div class="pf-kpi">
               <div class="pf-kpi-label">{l s='Montant demandé' mod='paiementfacilite'}</div>
               <div class="pf-kpi-value">{$pf_request->credit_amount|string_format:"%.2f"} <span
                   class="pf-kpi-unit">DT</span></div>
             </div>
           </div>
-          <div class="col-sm-3">
+          <div class="col-sm-2">
+            <div class="pf-kpi">
+              <div class="pf-kpi-label">
+                {l s='Total après intérêts' mod='paiementfacilite'}
+                {if $pf_request->interest_rate > 0}
+                  <small style="color:#795548;">({$pf_request->interest_rate|string_format:"%.2f"} %)</small>
+                {/if}
+              </div>
+              <div class="pf-kpi-value">{$pf_total_with_interest|string_format:"%.2f"} <span
+                  class="pf-kpi-unit">DT</span></div>
+            </div>
+          </div>
+          <div class="col-sm-2">
             <div class="pf-kpi">
               <div class="pf-kpi-label">{l s='1ère tranche' mod='paiementfacilite'}</div>
               <div class="pf-kpi-value">{$pf_request->premiere_tranche|string_format:"%.2f"} <span
                   class="pf-kpi-unit">DT</span></div>
             </div>
           </div>
-          <div class="col-sm-3">
+          <div class="col-sm-2">
             <div class="pf-kpi">
-              <div class="pf-kpi-label">{l s='Mensualité' mod='paiementfacilite'} (×{$pf_request->nb_mois|intval})</div>
+              <div class="pf-kpi-label">{l s='Mensualité' mod='paiementfacilite'} (×{$pf_request->nb_mois|intval}
+                {l s='mois' mod='paiementfacilite'})</div>
               <div class="pf-kpi-value">{$pf_request->mensualite|string_format:"%.2f"} <span
                   class="pf-kpi-unit">DT</span></div>
             </div>
           </div>
-          <div class="col-sm-3">
+          <div class="col-sm-2">
             <div class="pf-kpi">
               <div class="pf-kpi-label">{l s='Commande liée' mod='paiementfacilite'}</div>
               <div class="pf-kpi-value">
@@ -196,6 +209,9 @@
               </div>
             </div>
           </div>
+        </div>
+        <div class="row" style="margin-top:10px;">
+
         </div>
 
         {if $pf_request->commentaire}

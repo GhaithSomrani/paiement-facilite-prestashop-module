@@ -57,8 +57,14 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $addresses    = $this->context->customer->getAddresses($id_lang);
         $selected_address_id = 0;
 
-        // Pre-select invoice address from the active cart
-        if ($id_cart && (int) $this->context->cart->id_address_invoice) {
+        // Pre-select billing address from the order if available, then fallback to cart
+        if ($id_order) {
+            $order = new Order($id_order);
+            if (Validate::isLoadedObject($order) && (int) $order->id_address_invoice) {
+                $selected_address_id = (int) $order->id_address_invoice;
+            }
+        }
+        if (!$selected_address_id && $id_cart && (int) $this->context->cart->id_address_invoice) {
             $selected_address_id = (int) $this->context->cart->id_address_invoice;
         }
 
@@ -283,9 +289,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // --- Per-month config: availability range + interest rate ---
+        // Partner-org members are exempt from interest
         $interest_rate = 0.0;
         $monthConfig   = PaiementFaciliteMonthConfig::getByMonths($nb_mois);
-        if ($monthConfig) {
+        if ($monthConfig && !$belongs_to_partner) {
             $interest_rate = (float) $monthConfig->interest_rate;
             $min_cfg       = (float) $monthConfig->min_amount;
 

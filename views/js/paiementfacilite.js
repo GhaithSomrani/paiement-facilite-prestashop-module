@@ -225,9 +225,9 @@
       updateMonthButtons(amount);
       var nbMois = getNbMois();
 
-      // Interest rate comes from the selected month's config
+      // Interest rate comes from the selected month's config (0 for partner-org members)
       var cfg          = getMonthConfig(nbMois);
-      var interestRate = cfg ? cfg.interestRate : 0;
+      var interestRate = (!PF.belongsToPartner && cfg) ? cfg.interestRate : 0;
 
       // Total cost = full credit × (1 + rate%)
       var totalWithInterest = Math.round(amount * (1 + interestRate / 100) * 10000) / 10000;
@@ -243,7 +243,7 @@
       }
 
       $display.text(amount.toFixed(0));
-      $moisDisp.text(nbMois);
+      $moisDisp.text(nbMois - 1);
 
       $tranche.attr('min', minTr.toFixed(2));
       if (!$tranche.data('user-edited')) {
@@ -359,14 +359,27 @@
   }
 
   /* ── Navigation ── */
+  function getNextStep(step) {
+    var next = step + 1;
+    if (PF_CONFIG.isFromCheckout && next === 3) next = 4;
+    return next;
+  }
+
+  function getPrevStep(step) {
+    var prev = step - 1;
+    if (PF_CONFIG.isFromCheckout && prev === 3) prev = 2;
+    return prev;
+  }
+
   function initNavButtons() {
     $(document).on('click', '.pf-next-btn', function () {
       if (!validateStep(PF.currentStep)) return;
-      saveDraft(PF.currentStep + 1);
-      goTo(PF.currentStep + 1);
+      var next = getNextStep(PF.currentStep);
+      saveDraft(next);
+      goTo(next);
     });
     $(document).on('click', '.pf-prev-btn', function () {
-      goTo(PF.currentStep - 1);
+      goTo(getPrevStep(PF.currentStep));
     });
     // Clear draft on final submission
     $('#pf-form').on('submit', function () {
