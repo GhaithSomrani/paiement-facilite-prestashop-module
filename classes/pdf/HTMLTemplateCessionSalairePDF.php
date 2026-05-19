@@ -121,10 +121,9 @@ class HTMLTemplateCessionSalairePDF
         $pdf = new TCPDF('P', 'mm', 'A4', true, 'UTF-8', false);
         $pdf->setPrintHeader(false);
         $pdf->setPrintFooter(false);
-        // Leave 15 mm margins all around; bottom margin needs space for our footer table
         $pdf->SetMargins(15, 15, 15);
-        $pdf->SetAutoPageBreak(true, 15);
-        $pdf->SetFont('times', '', 12);
+        $pdf->SetAutoPageBreak(true, 20);
+        $pdf->SetFont('dejavusans', '', 11);
         $pdf->AddPage();
         $pdf->writeHTML($html, true, false, true, false, '');
         $pdf->Output($this->getFilename(), 'D');
