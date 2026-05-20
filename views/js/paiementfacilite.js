@@ -245,18 +245,26 @@
       $display.text(amount.toFixed(0));
       $moisDisp.text(nbMois - 1);
 
+      // Max première tranche = total with interest (can't overpay)
+      var maxTr = Math.round(totalWithInterest * 100) / 100;
+
       $tranche.attr('min', minTr.toFixed(2));
+      $tranche.attr('max', maxTr.toFixed(2));
       if (!$tranche.data('user-edited')) {
         $tranche.val(minTr.toFixed(2));
       }
 
-      // Show inline error if tranche is below minimum, but don't override the value
+      // Show inline error if tranche is out of [min, max]
       var trancheVal = parseFloat($tranche.val()) || 0;
       var $trancheErr = $('#pf-tranche-error');
-      if ($tranche.data('user-edited') && trancheVal < minTr) {
+      if ($tranche.data('user-edited') && trancheVal > maxTr) {
+        $trancheErr.text('Montant maximum : ' + maxTr.toFixed(2) + ' DT').show();
+        $tranche.css('border-color', '#c0392b');
+        trancheVal = maxTr;
+      } else if ($tranche.data('user-edited') && trancheVal < minTr) {
         $trancheErr.text('Montant minimum : ' + minTr.toFixed(2) + ' DT').show();
         $tranche.css('border-color', '#c0392b');
-        trancheVal = minTr; // use min for mensualité display only
+        trancheVal = minTr;
       } else {
         $trancheErr.hide();
         $tranche.css('border-color', '');
@@ -463,6 +471,11 @@
         var minTrV = Math.round(totalV / nbMoisV * 100) / 100;
         if (tranche < minTrV - 0.01) {
           errors.push('La 1ère tranche minimum est ' + minTrV.toFixed(2) + ' DT (total ÷ ' + nbMoisV + ' mois).');
+        }
+        // Max tranche = total with interest
+        var maxTrV = Math.round(totalV * 100) / 100;
+        if (tranche > maxTrV + 0.01) {
+          errors.push('La 1ère tranche maximum est ' + maxTrV.toFixed(2) + ' DT (total avec intérêts).');
         }
         break;
 

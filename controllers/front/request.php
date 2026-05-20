@@ -315,6 +315,12 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $errors[] = $this->module->l('La 1ère tranche doit être au minimum égale à une mensualité.');
         }
 
+        // Maximum première tranche = total with interest (cannot overpay)
+        $max_tranche = round($total_with_interest, 2);
+        if ($premiere_tranche > $max_tranche) {
+            $errors[] = $this->module->l('La 1ère tranche ne peut pas dépasser le montant total avec intérêts.');
+        }
+
         // Mensualité = remaining balance ÷ (nb_mois - 1)
         $mensualite = ($nb_mois > 1)
             ? round(($total_with_interest - $premiere_tranche) / ($nb_mois - 1), 2)
