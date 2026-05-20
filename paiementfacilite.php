@@ -56,6 +56,7 @@ class PaiementFacilite extends PaymentModule
             'paymentReturn',
             'displayCustomerAccount',
             'displayBackOfficeHeader',
+            'displayOrderDetail',
         ];
 
         foreach ($hooks as $hook) {
@@ -493,8 +494,77 @@ class PaiementFacilite extends PaymentModule
         return $this->fetch('module:paiementfacilite/views/templates/hook/customer_account.tpl');
     }
 
+    public function hookDisplayOrderDetail($params)
+    {
+        if (!$this->active) {
+            return '';
+        }
+
+        $order = $params['order'];
+        if (!Validate::isLoadedObject($order)) {
+            return '';
+        }
+
+        require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteRequest.php';
+        require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteOrganisation.php';
+
+        $row = Db::getInstance()->getRow(
+            'SELECT id_request FROM `' . _DB_PREFIX_ . 'pf_request_orders`
+             WHERE id_order = ' . (int) $order->id
+        );
+        if (!$row) {
+            return '';
+        }
+
+        $request = new PaiementFaciliteRequest((int) $row['id_request']);
+        if (!Validate::isLoadedObject($request)) {
+            return '';
+        }
+
+        // Organisation name
+        $orgName = '';
+        if ($request->id_organisation) {
+            $org = new PaiementFaciliteOrganisation((int) $request->id_organisation);
+            if (Validate::isLoadedObject($org)) {
+                $orgName = $org->name;
+            }
+        } elseif ($request->organisation_autre) {
+            $orgName = $request->organisation_autre;
+        }
+
+        $address     = new Address((int) $request->id_address);
+        $creditReste = round((float) $request->credit_amount - (float) $request->premiere_tranche, 3);
+
+        $pdfUrl = $this->context->link->getModuleLink(
+            'paiementfacilite',
+            'request',
+            ['download_pdf' => 1, 'id_request' => (int) $request->id],
+            true
+        );
+
+        $this->context->controller->addCSS($this->_path . 'views/css/paiementfacilite.css');
+
+        $customer = new Customer((int) $request->id_customer);
+
+        $this->context->smarty->assign([
+            'pf_od_request'      => $request,
+            'pf_od_customer'     => $customer,
+            'pf_od_address'      => $address,
+            'pf_od_org_name'     => $orgName,
+            'pf_od_credit_reste' => $creditReste,
+            'pf_od_pdf_url'      => $pdfUrl,
+        ]);
+
+        return $this->fetch('module:paiementfacilite/views/templates/hook/order_detail.tpl');
+    }
+
     public function hookDisplayBackOfficeHeader()
     {
+        // Self-register displayOrderDetail if not yet registered (added post-install)
+        if (!$this->isRegisteredInHook('displayOrderDetail')) {
+            $this->registerHook('displayOrderDetail');
+        }
+
         $controller = Tools::getValue('controller');
         $pfControllers = ['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges'];
 
