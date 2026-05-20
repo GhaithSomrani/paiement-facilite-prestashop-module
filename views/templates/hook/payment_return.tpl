@@ -81,13 +81,13 @@
         </a>
       </div>
 
-      <script>
+      {* <script>
         window.addEventListener('load', function() {
           setTimeout(function() {
             window.location.href = "{$pf_pdf_url}";
           }, 800);
         });
-      </script>
+      </script> *}
     {/if}
 
   {/if}

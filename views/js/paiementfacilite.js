@@ -288,7 +288,9 @@
               ' &mdash; Intérêts&nbsp;: <strong>' + interestAmt.toFixed(2) + ' DT</strong>')
             .show();
         } else {
-          $badge.hide();
+          $badge
+            .html('Sans intérêts &mdash; Taux&nbsp;: <strong>0 %</strong> &mdash; Total à payer&nbsp;: <strong>' + amount.toFixed(2) + ' DT</strong>')
+            .show();
         }
       }
 
