@@ -523,12 +523,55 @@ class PaiementFacilite extends PaymentModule
             return false;
         }
 
+        // Organisation name
+        $orgName = '';
+        if ($request->id_organisation) {
+            require_once dirname(__FILE__) . '/classes/PaiementFaciliteOrganisation.php';
+            $org = new PaiementFaciliteOrganisation((int) $request->id_organisation);
+            if (Validate::isLoadedObject($org)) {
+                $orgName = $org->name;
+            }
+        } elseif ($request->organisation_autre) {
+            $orgName = $request->organisation_autre;
+        }
+
+        // Address
+        $address     = new Address((int) $request->id_address);
+        $adresseLine = Validate::isLoadedObject($address)
+            ? trim($address->address1 . ($address->city ? ', ' . $address->city : ''))
+            : '';
+
+        $creditReste = round((float) $request->credit_amount - (float) $request->premiere_tranche, 3);
+        $interestStr = (float) $request->interest_rate > 0
+            ? number_format($request->interest_rate, 2, ',', ' ') . ' %'
+            : 'Sans intérêts';
+
+        $rowStyle   = 'padding: 10px 0; border-bottom: 1px solid #e5e5e5;';
+        $labelStyle = 'color: #999999; font-size: 12px;';
+        $valueStyle = 'color: #000000; font-weight: 500; margin-left: 8px;';
+
+        $orgRow     = $orgName
+            ? '<tr><td style="' . $rowStyle . '"><span style="' . $labelStyle . '">Organisme :</span><span style="' . $valueStyle . '">' . htmlspecialchars($orgName) . '</span></td></tr>'
+            : '';
+        $fonctionVal = $request->is_company ? ($request->raison_sociale ?: '') : ($request->fonction ?: '');
+        $fonctionRow = $fonctionVal
+            ? '<tr><td style="' . $rowStyle . '"><span style="' . $labelStyle . '">' . ($request->is_company ? 'Société :' : 'Fonction :') . '</span><span style="' . $valueStyle . '">' . htmlspecialchars($fonctionVal) . '</span></td></tr>'
+            : '';
+
         $templateVars = [
-            '{firstname}'  => $customer->firstname,
-            '{lastname}'   => $customer->lastname,
-            '{id_request}' => $request->id,
-            '{amount}'     => number_format($request->credit_amount, 2, ',', ' ') . ' DT',
-            '{date}'       => date('d/m/Y'),
+            '{firstname}'        => $customer->firstname,
+            '{lastname}'         => $customer->lastname,
+            '{id_request}'       => $request->id,
+            '{amount}'           => number_format($request->credit_amount, 2, ',', ' ') . ' DT',
+            '{date}'             => date('d/m/Y'),
+            '{organisme_row}'    => $orgRow,
+            '{fonction_row}'     => $fonctionRow,
+            '{adresse}'          => $adresseLine,
+            '{interest_rate}'    => $interestStr,
+            '{premiere_tranche}' => number_format($request->premiere_tranche, 2, ',', ' ') . ' DT',
+            '{credit_reste}'     => number_format($creditReste, 2, ',', ' ') . ' DT',
+            '{mensualite}'       => number_format($request->mensualite, 2, ',', ' ') . ' DT',
+            '{nb_mois}'          => (int) $request->nb_mois,
         ];
 
         // Generate PDF attachment

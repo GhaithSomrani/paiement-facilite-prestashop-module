@@ -52,36 +52,76 @@
                                 Demande
                             </p>
                             <p style="margin: 0 0 30px 0; font-size: 18px; color: #000000; font-weight: 600;">
-                                #{id_request}
+                                #{id_request} &mdash; {date}
                             </p>
 
-                            <!-- Details rows -->
+                            <!-- ── Identité ── -->
+                            <p style="margin: 0 0 6px 0; font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                                Identité
+                            </p>
                             <table width="100%" cellpadding="0" cellspacing="0" border="0"
-                                style="margin-bottom: 30px; font-size: 14px;">
+                                style="margin-bottom: 24px; font-size: 14px;">
                                 <tr>
-                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e5e5;">
-                                        <span style="color: #999999; display: block; font-size: 12px; margin-bottom: 4px;">
-                                            Client : <span style="color: #000000; font-weight: 500;">{firstname} {lastname}</span>
-                                        </span>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">
+                                        <span style="color: #999999; font-size: 12px;">Nom :</span>
+                                        <span style="color: #000000; font-weight: 500; margin-left: 8px;">{firstname} {lastname}</span>
                                     </td>
                                 </tr>
+                                {fonction_row}
+                                {organisme_row}
                                 <tr>
-                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e5e5;">
-                                        <span style="color: #999999; display: block; font-size: 12px; margin-bottom: 4px;">
-                                            Montant demandé : <span style="color: #000000; font-weight: 500;">{amount}</span>
-                                        </span>
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="padding: 12px 0; border-bottom: 1px solid #e5e5e5;">
-                                        <span style="color: #999999; display: block; font-size: 12px; margin-bottom: 4px;">
-                                            Date : <span style="color: #000000; font-weight: 500;">{date}</span>
-                                        </span>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">
+                                        <span style="color: #999999; font-size: 12px;">Adresse :</span>
+                                        <span style="color: #000000; font-weight: 500; margin-left: 8px;">{adresse}</span>
                                     </td>
                                 </tr>
                             </table>
 
-                            <!-- Summary row -->
+                            <!-- ── Financement ── -->
+                            <p style="margin: 0 0 6px 0; font-size: 11px; color: #999999; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
+                                Financement
+                            </p>
+                            <table width="100%" cellpadding="0" cellspacing="0" border="0"
+                                style="margin-bottom: 30px; font-size: 14px;">
+                                <tr>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">
+                                        <span style="color: #999999; font-size: 12px;">Montant des achats :</span>
+                                        <span style="color: #000000; font-weight: 500; margin-left: 8px;">{amount}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">
+                                        <span style="color: #999999; font-size: 12px;">Taux d'int&eacute;r&ecirc;ts :</span>
+                                        <span style="color: #000000; font-weight: 500; margin-left: 8px;">{interest_rate}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">
+                                        <span style="color: #999999; font-size: 12px;">1&egrave;re tranche :</span>
+                                        <span style="color: #000000; font-weight: 500; margin-left: 8px;">{premiere_tranche}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">
+                                        <span style="color: #999999; font-size: 12px;">Reste &agrave; payer :</span>
+                                        <span style="color: #000000; font-weight: 500; margin-left: 8px;">{credit_reste}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">
+                                        <span style="color: #999999; font-size: 12px;">Mensualit&eacute; :</span>
+                                        <span style="color: #000000; font-weight: 500; margin-left: 8px;">{mensualite}</span>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td style="padding: 10px 0; border-bottom: 1px solid #e5e5e5;">
+                                        <span style="color: #999999; font-size: 12px;">Nombre de mois :</span>
+                                        <span style="color: #000000; font-weight: 500; margin-left: 8px;">{nb_mois} mois</span>
+                                    </td>
+                                </tr>
+                            </table>
+
+                            <!-- Total row -->
                             <table width="100%" cellpadding="0" cellspacing="0" border="0"
                                 style="margin-bottom: 40px; font-size: 14px;">
                                 <tr>
@@ -98,9 +138,9 @@
 
                             <!-- Closing -->
                             <p style="margin: 0; font-size: 14px; color: #666666; line-height: 1.6;">
-                                Notre équipe examinera votre dossier et vous contactera dans les meilleurs délais.<br><br>
+                                Notre &eacute;quipe examinera votre dossier et vous contactera dans les meilleurs d&eacute;lais.<br><br>
                                 Cordialement,<br>
-                                <strong style="color: #000000;">L'équipe {shop_name}</strong>
+                                <strong style="color: #000000;">L'&eacute;quipe {shop_name}</strong>
                             </p>
 
                         </td>
