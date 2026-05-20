@@ -31,8 +31,11 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $this->context->controller->addCSS($this->module->getPathUri() . 'views/css/paiementfacilite.css');
         $this->context->controller->addJS($this->module->getPathUri() . 'views/js/paiementfacilite.js');
 
-        // Confirmation page (handled by postProcess before initContent runs)
-        if (Tools::getValue('confirmed') && Tools::getValue('id_request')) {
+        // These pages are set up by postProcess(); don't overwrite the template here
+        if (Tools::getValue('id_request') && (
+            Tools::getValue('confirmed') ||
+            Tools::getValue('summary')
+        )) {
             return;
         }
 
@@ -369,51 +372,18 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             return;
         }
 
-        // --- Validate order from cart (if coming from checkout) ---
-        $cart           = $this->context->cart;
-        $id_order       = 0;
-        $cart_id_saved  = $cart ? (int) $cart->id : 0;
-
-        if ($cart && $cart->id && $cart->nbProducts() > 0) {
-            $id_order = $this->validateCartAsOrder($request->id, $cart);
-        }
-
-        // --- Link order to request ---
-        $request->linkOrder($id_order ?: null);
-
-        // --- Process document uploads ---
+        // --- Process document uploads (must happen now, files won't survive redirect) ---
         if (!$belongs_to_partner) {
             $this->processDocumentUploads($request->id, $is_company, $is_retired);
         }
 
-        // --- Send emails ---
-        $this->module->sendConfirmationEmail($request->id);
-
-        // --- Redirect to confirmation ---
-        if ($id_order && $cart_id_saved) {
-            // Checkout flow: use PS native order-confirmation page
-            $url = $this->context->link->getPageLink(
-                'order-confirmation',
-                true,
-                null,
-                [
-                    'id_cart'   => $cart_id_saved,
-                    'id_module' => (int) $this->module->id,
-                    'id_order'  => $id_order,
-                    'key'       => $this->context->customer->secure_key,
-                ]
-            );
-        } else {
-            // Standalone flow: module confirmation page
-            $url = $this->context->link->getModuleLink(
-                'paiementfacilite',
-                'request',
-                ['confirmed' => 1, 'id_request' => (int) $request->id],
-                true
-            );
-        }
-
-        Tools::redirect($url);
+        // --- Redirect to summary/preview page (order creation deferred to confirm step) ---
+        Tools::redirect($this->context->link->getModuleLink(
+            'paiementfacilite',
+            'request',
+            ['summary' => 1, 'id_request' => (int) $request->id],
+            true
+        ));
     }
 
     /**
@@ -648,28 +618,144 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
      */
     public function postProcess()
     {
-        if (Tools::getValue('download_pdf') && Tools::getValue('id_request')) {
-            $this->handlePdfDownload();
-        } elseif (Tools::getValue('confirmed') && Tools::getValue('id_request')) {
-            $this->initContentConfirmation();
+        $id_request = (int) Tools::getValue('id_request');
+
+        if (Tools::getValue('pdf_html') && $id_request) {
+            $this->renderPdfHtml($id_request);
+        } elseif (Tools::getValue('confirm_request') && $id_request) {
+            $this->processConfirmRequest($id_request);
+        } elseif (Tools::getValue('download_pdf') && $id_request) {
+            $this->handlePdfDownload($id_request);
+        } elseif (Tools::getValue('summary') && $id_request) {
+            $this->initContentSummary($id_request);
+        } elseif (Tools::getValue('confirmed') && $id_request) {
+            Tools::redirect($this->context->link->getModuleLink(
+                'paiementfacilite', 'request',
+                ['summary' => 1, 'id_request' => $id_request], true
+            ));
         }
     }
 
-    private function handlePdfDownload()
+    private function loadOwnedRequest($id_request)
     {
-        $id_request = (int) Tools::getValue('id_request');
-        $request    = new PaiementFaciliteRequest($id_request);
-
-        if (
-            !Validate::isLoadedObject($request) ||
-            (int) $request->id_customer !== (int) $this->context->customer->id
-        ) {
+        $request = new PaiementFaciliteRequest($id_request);
+        if (!Validate::isLoadedObject($request) || (int) $request->id_customer !== (int) $this->context->customer->id) {
             Tools::redirect($this->context->link->getPageLink('index'));
-            return;
+            exit;
         }
+        return $request;
+    }
 
+    private function handlePdfDownload($id_request)
+    {
+        $request = $this->loadOwnedRequest($id_request);
         $pdf = new HTMLTemplateCessionSalairePDF($request, $this->context->smarty);
         $pdf->render();
         exit;
+    }
+
+    private function renderPdfHtml($id_request)
+    {
+        $request = $this->loadOwnedRequest($id_request);
+        $pdfTemplate = new HTMLTemplateCessionSalairePDF($request, $this->context->smarty);
+        header('Content-Type: text/html; charset=UTF-8');
+        echo $pdfTemplate->getContent();
+        exit;
+    }
+
+    private function initContentSummary($id_request)
+    {
+        $request = $this->loadOwnedRequest($id_request);
+
+        $customer = new Customer((int) $request->id_customer);
+        $address  = new Address((int) $request->id_address);
+
+        $org_name = '';
+        if ($request->id_organisation) {
+            $org = new PaiementFaciliteOrganisation((int) $request->id_organisation);
+            if (Validate::isLoadedObject($org)) {
+                $org_name = $org->name;
+            }
+        } elseif ($request->organisation_autre) {
+            $org_name = $request->organisation_autre;
+        }
+
+        $base         = ['id_request' => $id_request];
+        $admin_email  = Configuration::get('PF_ADMIN_EMAIL') ?: Configuration::get('PS_SHOP_EMAIL');
+        $credit_reste = round((float) $request->credit_amount - (float) $request->premiere_tranche, 3);
+
+        // Check if already confirmed
+        $linked    = $request->getLinkedOrder();
+        $confirmed = (bool) $linked;
+        $id_order  = $linked ? (int) $linked : 0;
+        $order_url = '';
+        if ($id_order) {
+            $order = new Order($id_order);
+            if (Validate::isLoadedObject($order)) {
+                $order_url = $this->context->link->getPageLink('order-detail', true, null, ['id_order' => $id_order]);
+            }
+        }
+
+        $this->context->smarty->assign([
+            'pf_request'         => $request,
+            'pf_customer'        => $customer,
+            'pf_address'         => $address,
+            'pf_org_name'        => $org_name,
+            'pf_credit_reste'    => $credit_reste,
+            'pf_admin_email'     => $admin_email,
+            'pf_pdf_url'         => $this->context->link->getModuleLink('paiementfacilite', 'request', $base + ['download_pdf' => 1], true),
+            'pf_pdf_preview_url' => $this->context->link->getModuleLink('paiementfacilite', 'request', $base + ['pdf_html' => 1], true),
+            'pf_confirm_url'     => $this->context->link->getModuleLink('paiementfacilite', 'request', [], true),
+            'pf_confirmed'       => $confirmed,
+            'pf_id_order'        => $id_order,
+            'pf_order_url'       => $order_url,
+        ]);
+
+        $this->setTemplate('module:paiementfacilite/views/templates/front/summary.tpl');
+    }
+
+    private function processConfirmRequest($id_request)
+    {
+        $request = $this->loadOwnedRequest($id_request);
+
+        // Idempotency: already confirmed
+        $linked = $request->getLinkedOrder();
+        if ($linked) {
+            Tools::redirect($this->context->link->getModuleLink(
+                'paiementfacilite', 'request',
+                ['summary' => 1, 'id_request' => $id_request], true
+            ));
+            return;
+        }
+
+        // Create order from active cart (checkout flow)
+        $cart          = $this->context->cart;
+        $id_order      = 0;
+        $cart_id_saved = $cart ? (int) $cart->id : 0;
+
+        if ($cart && $cart->id && $cart->nbProducts() > 0) {
+            $id_order = $this->validateCartAsOrder($request->id, $cart);
+        }
+
+        $request->linkOrder($id_order ?: null);
+
+        // Send confirmation email with PDF attached
+        $this->module->sendConfirmationEmail($request->id);
+
+        if ($id_order && $cart_id_saved) {
+            $url = $this->context->link->getPageLink('order-confirmation', true, null, [
+                'id_cart'   => $cart_id_saved,
+                'id_module' => (int) $this->module->id,
+                'id_order'  => $id_order,
+                'key'       => $this->context->customer->secure_key,
+            ]);
+        } else {
+            $url = $this->context->link->getModuleLink(
+                'paiementfacilite', 'request',
+                ['summary' => 1, 'id_request' => $id_request], true
+            );
+        }
+
+        Tools::redirect($url);
     }
 }

@@ -474,6 +474,8 @@ class PaiementFacilite extends PaymentModule
 
         $admin_email = Configuration::get('PF_ADMIN_EMAIL') ?: Configuration::get('PS_SHOP_EMAIL');
 
+        $this->context->controller->addCSS($this->_path . 'views/css/paiementfacilite.css');
+
         $this->context->smarty->assign([
             'shop_name'      => $this->context->shop->name,
             'id_order'       => $order->id,

@@ -107,7 +107,7 @@
 <script>
   window.addEventListener('load', function () {
     setTimeout(function () {
-      window.location.href = '{$pf_pdf_url|escape:"javascript"}';
+      window.location.href = '{$pf_pdf_url nofilter}';
     }, 800);
   });
 </script>
