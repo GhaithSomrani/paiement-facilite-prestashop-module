@@ -210,6 +210,27 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         $interest_rate      = (float) $request->interest_rate;
         $total_with_interest = $request->credit_amount * (1 + $interest_rate / 100);
 
+        // PDF preview computed values (mirror HTMLTemplateCessionSalairePDF logic)
+        $org_name_cs = '';
+        if ($org && Validate::isLoadedObject($org)) {
+            $org_name_cs = $org->name;
+        } elseif ($request->organisation_autre) {
+            $org_name_cs = $request->organisation_autre;
+        }
+        $cin_cs       = $request->is_company ? $request->cin_gerant : $request->cin;
+        $matricule_cs = $request->is_company ? $request->matricule_fiscal : '';
+        $credit_reste_cs = round((float) $request->credit_amount - (float) $request->premiere_tranche, 3);
+        $nb_mois_cs = max(1, (int) $request->nb_mois);
+        $start_cs   = new DateTime('first day of next month');
+        $end_cs     = clone $start_cs;
+        $end_cs->modify('+' . ($nb_mois_cs - 1) . ' months');
+        $logo_file_cs = _PS_IMG_DIR_ . Configuration::get('PS_LOGO');
+        $logo_url_cs  = file_exists($logo_file_cs)
+            ? $this->context->link->getMediaLink('/img/' . Configuration::get('PS_LOGO'))
+            : '';
+        $addr1_cs = Configuration::get('PS_SHOP_ADDR1') ?: '';
+        $addr2_cs = Configuration::get('PS_SHOP_ADDR2') ?: '';
+
         $this->context->smarty->assign([
             'pf_request'             => $request,
             'pf_customer'            => $customer,
@@ -230,6 +251,18 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
             'doc_labels'             => $this->getDocLabels(),
             'pf_total_with_interest' => round($total_with_interest, 2),
             'pf_interest_amount'     => round($total_with_interest - $request->credit_amount, 2),
+            // PDF preview vars
+            'pf_cs_org_name'         => $org_name_cs,
+            'pf_cs_cin'              => $cin_cs,
+            'pf_cs_matricule'        => $matricule_cs,
+            'pf_cs_credit_reste'     => $credit_reste_cs,
+            'pf_cs_period_start'     => $start_cs->format('01/m/Y'),
+            'pf_cs_period_end'       => $end_cs->format('01/m/Y'),
+            'pf_cs_logo_url'         => $logo_url_cs,
+            'pf_cs_shop_name'        => Configuration::get('PS_SHOP_NAME'),
+            'pf_cs_shop_city'        => Configuration::get('PS_SHOP_CITY') ?: '',
+            'pf_cs_shop_address'     => $addr1_cs . ($addr2_cs ? ' | ' . $addr2_cs : ''),
+            'pf_cs_date'             => date('d/m/Y'),
         ]);
 
         return $this->context->smarty->fetch(_PS_MODULE_DIR_ . 'paiementfacilite/views/templates/admin/view_request.tpl');

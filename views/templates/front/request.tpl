@@ -119,7 +119,6 @@
         <h2 class="pf-section-title">{l s='Organisme partenaire' mod='paiementfacilite'}</h2>
 
         <div class="pf-field">
-          <label for="pf-org-select">{l s='Êtes-vous membre d\'un organisme ?' mod='paiementfacilite'}</label>
           <select name="id_organisation" id="pf-org-select">
             <option value="0">{l s="N'appartient à aucun organisme" mod='paiementfacilite'}</option>
             {foreach $pf_organisations as $org}
@@ -131,9 +130,8 @@
 
         <div id="pf-org-autre-block" style="display:none;">
           <div class="pf-field">
-            <label for="pf-org-autre">{l s='Nom de l\'organisme' mod='paiementfacilite'} *</label>
             <input type="text" name="organisation_autre" id="pf-org-autre" maxlength="255"
-              placeholder="{l s='Précisez le nom' mod='paiementfacilite'}">
+              placeholder="{l s='Nom de l\'organisme *' mod='paiementfacilite'}">
           </div>
         </div>
 
@@ -167,7 +165,6 @@
         {/if}
 
         <div class="pf-field">
-          <label for="pf-address-select">{l s='Choisir une adresse' mod='paiementfacilite'}</label>
           <select id="pf-address-select">
             {foreach $pf_addresses as $addr}
               <option value="{$addr.id_address|intval}" {if $addr.id_address == $pf_selected_address_id}selected{/if}>
@@ -197,17 +194,16 @@
         <div id="pf-personal-fields">
           <div class="pf-grid">
             <div class="pf-field">
-              <label for="pf-date-naissance">{l s='Date de naissance' mod='paiementfacilite'} *</label>
               <input type="date" name="date_naissance" id="pf-date-naissance" value="{$pf_birthday|escape:'html'}"
-                max="{$smarty.now|date_format:'%Y-%m-%d'}">
+                max="{$smarty.now|date_format:'%Y-%m-%d'}"
+                placeholder="{l s='Date de naissance *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field">
-              <label for="pf-cin">{l s='Numéro de CIN' mod='paiementfacilite'} *</label>
-              <input type="text" name="cin" id="pf-cin" maxlength="32" placeholder="00000000">
+              <input type="text" name="cin" id="pf-cin" maxlength="32" placeholder="{l s='Numéro de CIN *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field pf-span-2">
-              <label for="pf-fonction">{l s='Fonction / Profession' mod='paiementfacilite'} *</label>
-              <input type="text" name="fonction" id="pf-fonction" maxlength="128">
+              <input type="text" name="fonction" id="pf-fonction" maxlength="128"
+                placeholder="{l s='Fonction / Profession *' mod='paiementfacilite'}">
             </div>
           </div>
         </div>
@@ -218,30 +214,29 @@
             {l s='Informations de la société' mod='paiementfacilite'}</h3>
           <div class="pf-grid">
             <div class="pf-field">
-              <label for="pf-raison-sociale">{l s='Raison Sociale' mod='paiementfacilite'} *</label>
-              <input type="text" name="raison_sociale" id="pf-raison-sociale" maxlength="255">
+              <input type="text" name="raison_sociale" id="pf-raison-sociale" maxlength="255"
+                placeholder="{l s='Raison Sociale *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field">
-              <label for="pf-representant-legal">{l s='Représentant légal' mod='paiementfacilite'} *</label>
-              <input type="text" name="representant_legal" id="pf-representant-legal" maxlength="255">
+              <input type="text" name="representant_legal" id="pf-representant-legal" maxlength="255"
+                placeholder="{l s='Représentant légal *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field">
-              <label for="pf-date-naissance-gerant">{l s='Date de naissance du gérant' mod='paiementfacilite'} *</label>
               <input type="date" name="date_naissance_gerant" id="pf-date-naissance-gerant"
-                max="{$smarty.now|date_format:'%Y-%m-%d'}">
+                max="{$smarty.now|date_format:'%Y-%m-%d'}"
+                placeholder="{l s='Date de naissance du gérant *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field">
-              <label for="pf-telephone-gerant">{l s='Numéro de téléphone' mod='paiementfacilite'} *</label>
               <input type="tel" name="telephone_gerant" id="pf-telephone-gerant" maxlength="32"
-                placeholder="+216 XX XXX XXX">
+                placeholder="{l s='Numéro de téléphone *' mod='paiementfacilite'} (+216 XX XXX XXX)">
             </div>
             <div class="pf-field">
-              <label for="pf-email-gerant">{l s='Adresse email' mod='paiementfacilite'} *</label>
-              <input type="email" name="email_gerant" id="pf-email-gerant" maxlength="128">
+              <input type="email" name="email_gerant" id="pf-email-gerant" maxlength="128"
+                placeholder="{l s='Adresse email *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field">
-              <label for="pf-cin-gerant">{l s="Numéro de Carte d'identité nationale" mod='paiementfacilite'} *</label>
-              <input type="text" name="cin_gerant" id="pf-cin-gerant" maxlength="32" placeholder="00000000">
+              <input type="text" name="cin_gerant" id="pf-cin-gerant" maxlength="32"
+                placeholder="{l s="N° CIN gérant *" mod='paiementfacilite'}">
             </div>
           </div>
         </div>
@@ -357,8 +352,8 @@
         </div>
 
         <div class="pf-field" style="margin-top:20px;">
-          <label for="pf-commentaire">{l s='Commentaire (facultatif)' mod='paiementfacilite'}</label>
-          <textarea name="commentaire" id="pf-commentaire" rows="3" maxlength="2000"></textarea>
+          <textarea name="commentaire" id="pf-commentaire" rows="3" maxlength="2000"
+            placeholder="{l s='Commentaire (facultatif)' mod='paiementfacilite'}"></textarea>
         </div>
 
         <div class="pf-nav">

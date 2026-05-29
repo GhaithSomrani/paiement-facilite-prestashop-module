@@ -263,6 +263,159 @@
       </div>
     {/if}
 
+    {* ── PDF Document Preview ── *}
+    <div class="panel panel-default">
+      <div class="panel-heading">
+        <i class="icon-file-pdf-o"></i> {l s='Aperçu du document — Cession sur salaire' mod='paiementfacilite'}
+      </div>
+      <div class="panel-body" style="background:#e8e8e8;padding:30px;">
+        <div class="pf-pdf-page">
+
+          {* HEADER *}
+          <table style="width:100%;border-collapse:collapse;" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:50%;vertical-align:middle;">
+                {if $pf_cs_logo_url}
+                  <img src="{$pf_cs_logo_url|escape:'html'}" style="max-height:60px;max-width:180px;">
+                {else}
+                  <span style="font-size:20pt;font-weight:bold;letter-spacing:2px;">{$pf_cs_shop_name|upper|escape:'html'}</span>
+                {/if}
+              </td>
+              <td style="width:50%;text-align:right;vertical-align:middle;font-size:9pt;color:#333;line-height:2.0;">
+                www.lamode.tn<br>
+                hello@lamode.tn<br>
+                70 284 274 | 71 889 699
+              </td>
+            </tr>
+          </table>
+
+          <hr class="pf-pdf-hr pf-pdf-hr--thick">
+
+          {* TITLE *}
+          <p class="pf-pdf-title">CESSION SUR SALAIRE</p>
+          <table cellpadding="0" cellspacing="0" style="width:100%;margin:0 0 6px;">
+            <tr>
+              <td style="width:30%;border-bottom:1px solid #000;"></td>
+              <td style="width:40%;"></td>
+              <td style="width:30%;border-bottom:1px solid #000;"></td>
+            </tr>
+          </table>
+          <p style="text-align:center;font-size:11pt;margin:0 0 10px;">NO{$pf_request->id|intval}</p>
+
+          <br>
+
+          {* INTRO *}
+          <p style="font-weight:bold;margin:0 0 6px;font-size:11pt;">Je soussigné (M,Mme,Mlle)</p>
+
+          {* PERSONAL INFO *}
+          <table style="width:100%;font-size:10.5pt;border-collapse:collapse;" cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="width:50%;padding:2px 8px 2px 0;vertical-align:top;">
+                - Nom et Prénom : <b>{$pf_customer->firstname|escape:'html'} {$pf_customer->lastname|escape:'html'}</b>
+              </td>
+              <td style="width:50%;padding:2px 0 2px 8px;vertical-align:top;">
+                - N° CIN : <b>{$pf_cs_cin|escape:'html'}</b>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:2px 8px 2px 0;vertical-align:top;">
+                - Organisme : <b>{$pf_cs_org_name|escape:'html'}</b>
+              </td>
+              <td style="padding:2px 0 2px 8px;vertical-align:top;">
+                - Matricule : <b>{$pf_cs_matricule|escape:'html'}</b>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:2px 8px 2px 0;vertical-align:top;">
+                - Emploi : <b>{$pf_request->fonction|escape:'html'}</b>
+              </td>
+              <td style="padding:2px 0 2px 8px;vertical-align:top;">
+                - Téléphone : <b>{$pf_address->phone|escape:'html'}</b>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:2px 8px 2px 0;vertical-align:top;">
+                - Adresse : <b>{$pf_address->address1|escape:'html'}{if $pf_address->address2}, {$pf_address->address2|escape:'html'}{/if}{if $pf_address->postcode} {$pf_address->postcode|escape:'html'}{/if}</b>
+              </td>
+              <td style="padding:2px 0 2px 8px;vertical-align:top;">
+                - Ville : <b>{$pf_address->city|escape:'html'}</b>
+              </td>
+            </tr>
+          </table>
+
+          <br>
+
+          {* BODY TEXT *}
+          <p style="font-weight:bold;text-align:justify;margin:0;font-size:10.5pt;line-height:1.7;">
+            Je m'engage et j'autorise d'une façon irrévocable et irréversible, la direction de la gestion de paie
+            de mon employeur, la cession sur salaire suite aux achats que j'ai effectués, pour
+          </p>
+
+          <br>
+
+          {* CREDIT DETAILS *}
+          <table style="width:100%;font-size:10.5pt;border-collapse:collapse;" cellpadding="0" cellspacing="0">
+            <tr>
+              <td colspan="2" style="padding:2px 0;">
+                - Montant des achats : <b>{$pf_request->credit_amount|string_format:"%.3f"} DT</b>
+              </td>
+            </tr>
+            <tr>
+              <td style="width:50%;padding:2px 8px 2px 0;">
+                - Acompte : <b>{$pf_request->premiere_tranche|string_format:"%.3f"} DT</b>
+              </td>
+              <td style="width:50%;padding:2px 0 2px 8px;">
+                - Crédit (Reste à payer) : <b>{$pf_cs_credit_reste|string_format:"%.3f"} DT</b>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:2px 8px 2px 0;">
+                - Mensualité : <b>{$pf_request->mensualite|string_format:"%.3f"} DT</b>
+              </td>
+              <td style="padding:2px 0 2px 8px;">
+                - Nombre de mensualité(s) : <b>{$pf_request->nb_mois|intval}</b>
+              </td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding:2px 0;">
+                - Période (D'échéance) : Du&nbsp;: <b>{$pf_cs_period_start|escape:'html'}</b>
+                &nbsp;&nbsp; Au&nbsp;: <b>{$pf_cs_period_end|escape:'html'}</b>
+              </td>
+            </tr>
+          </table>
+
+          <br><br>
+
+          {* DATE LINE *}
+          <p style="text-align:center;color:#000;margin:0;font-size:10.5pt;">
+            Fait en trois exemplaires, à {$pf_cs_shop_city|escape:'html'} le {$pf_cs_date|escape:'html'}
+          </p>
+
+          <br><br>
+
+          {* SIGNATURES *}
+          <table style="width:100%;border-collapse:collapse;" cellpadding="2" cellspacing="0">
+            <tr>
+              <td style="width:25%;text-align:center;font-weight:bold;font-size:11pt;height:70px;vertical-align:top;border-top:1px dashed #ccc;">CLIENT</td>
+              <td style="width:25%;text-align:center;font-weight:bold;font-size:11pt;height:70px;vertical-align:top;border-top:1px dashed #ccc;">AMICALE</td>
+              <td style="width:25%;text-align:center;font-weight:bold;font-size:11pt;height:70px;vertical-align:top;border-top:1px dashed #ccc;">DIRECTION DE PAIE</td>
+              <td style="width:25%;text-align:center;font-weight:bold;font-size:11pt;height:70px;vertical-align:top;border-top:1px dashed #ccc;">{$pf_cs_shop_name|upper|escape:'html'}</td>
+            </tr>
+          </table>
+
+          {* FOOTER *}
+          <hr class="pf-pdf-hr">
+          {if $pf_cs_shop_address}
+            <p style="text-align:center;font-size:9pt;color:#444;margin:4px 0 2px;">{$pf_cs_shop_address|escape:'html'}</p>
+          {/if}
+          <p style="text-align:center;font-size:8pt;color:#555;margin:0;">
+            LaMode, enseigne du groupe E-Market, Matriculé sous le N°1381766S, au capital de 325000 dinars
+          </p>
+
+        </div>{* /pf-pdf-page *}
+      </div>
+    </div>
+
   </div>{* /panel-body *}
 
   <div class="panel-footer">
@@ -476,5 +629,38 @@
 
   .pf-col-action {
     width: 130px;
+  }
+
+  /* ── PDF document preview ── */
+  .pf-pdf-page {
+    background: #fff;
+    width: 210mm;
+    min-height: 297mm;
+    margin: 0 auto;
+    padding: 15mm;
+    box-shadow: 0 4px 24px rgba(0,0,0,.18);
+    font-family: Arial, Helvetica, sans-serif;
+    font-size: 10.5pt;
+    color: #000;
+    box-sizing: border-box;
+  }
+
+  .pf-pdf-hr {
+    border: 0;
+    border-top: 1px solid #000;
+    margin: 4mm 0 2mm;
+  }
+
+  .pf-pdf-hr--thick {
+    border-top-width: 1.5px;
+    margin: 3mm 0 4mm;
+  }
+
+  .pf-pdf-title {
+    text-align: center;
+    font-size: 20pt;
+    font-weight: bold;
+    margin: 0 0 4px;
+    letter-spacing: 1px;
   }
 </style>

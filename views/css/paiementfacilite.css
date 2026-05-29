@@ -240,6 +240,7 @@
   text-transform: uppercase;
   color: var(--pf-muted);
   margin-bottom: 7px;
+  text-align: left;
 }
 
 .pf-field input,
