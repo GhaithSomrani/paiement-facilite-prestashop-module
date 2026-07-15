@@ -419,6 +419,37 @@
     $('#pf-progress-bar').css('width', pct + '%');
   }
 
+  /* ── Field-level checks shared by step 4 ── */
+  var MIN_AGE = 18;
+
+  function pushCinErrors(errors, cin, label) {
+    if (!cin) {
+      errors.push(label + ' est obligatoire.');
+    } else if (!/^\d{8}$/.test(cin)) {
+      errors.push(label + ' doit contenir exactement 8 chiffres.');
+    }
+  }
+
+  function pushDobErrors(errors, dob, label) {
+    if (!dob) {
+      errors.push(label + ' est obligatoire.');
+      return;
+    }
+    var d = new Date(dob);
+    var today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (isNaN(d.getTime()) || d > today) {
+      errors.push(label + ' est invalide.');
+      return;
+    }
+    var age = today.getFullYear() - d.getFullYear();
+    var m = today.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < d.getDate())) age--;
+    if (age < MIN_AGE) {
+      errors.push(label + ' doit correspondre à un âge d\'au moins ' + MIN_AGE + ' ans.');
+    }
+  }
+
   /* ── Step validation ── */
   function validateStep(step) {
     clearAlerts();
@@ -447,13 +478,13 @@
         if (PF.isCompany) {
           if (!$('#pf-raison-sociale').val().trim()) errors.push('La raison sociale est obligatoire.');
           if (!$('#pf-representant-legal').val().trim()) errors.push('Le représentant légal est obligatoire.');
-          if (!$('#pf-date-naissance-gerant').val()) errors.push('La date de naissance du gérant est obligatoire.');
+          pushDobErrors(errors, $('#pf-date-naissance-gerant').val(), 'La date de naissance du gérant');
           if (!$('#pf-telephone-gerant').val().trim()) errors.push('Le numéro de téléphone est obligatoire.');
           if (!$('#pf-email-gerant').val().trim()) errors.push("L'adresse email est obligatoire.");
-          if (!$('#pf-cin-gerant').val().trim()) errors.push("Le numéro de CIN du gérant est obligatoire.");
+          pushCinErrors(errors, $('#pf-cin-gerant').val().trim(), 'Le numéro de CIN du gérant');
         } else {
-          if (!$('#pf-date-naissance').val()) errors.push('La date de naissance est obligatoire.');
-          if (!$('#pf-cin').val().trim()) errors.push('Le numéro de CIN est obligatoire.');
+          pushDobErrors(errors, $('#pf-date-naissance').val(), 'La date de naissance');
+          pushCinErrors(errors, $('#pf-cin').val().trim(), 'Le numéro de CIN');
           if (!$('#pf-fonction').val().trim()) errors.push('La fonction / profession est obligatoire.');
         }
         break;

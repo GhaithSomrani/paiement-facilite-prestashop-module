@@ -199,7 +199,7 @@
                 placeholder="{l s='Date de naissance *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field">
-              <input type="text" name="cin" id="pf-cin" maxlength="32" placeholder="{l s='Numéro de CIN *' mod='paiementfacilite'}">
+              <input type="text" name="cin" id="pf-cin" maxlength="8" inputmode="numeric" pattern="[0-9]{8}" placeholder="{l s='Numéro de CIN (8 chiffres) *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field pf-span-2">
               <input type="text" name="fonction" id="pf-fonction" maxlength="128"
@@ -235,8 +235,8 @@
                 placeholder="{l s='Adresse email *' mod='paiementfacilite'}">
             </div>
             <div class="pf-field">
-              <input type="text" name="cin_gerant" id="pf-cin-gerant" maxlength="32"
-                placeholder="{l s="N° CIN gérant *" mod='paiementfacilite'}">
+              <input type="text" name="cin_gerant" id="pf-cin-gerant" maxlength="8" inputmode="numeric" pattern="[0-9]{8}"
+                placeholder="{l s="N° CIN gérant (8 chiffres) *" mod='paiementfacilite'}">
             </div>
           </div>
         </div>

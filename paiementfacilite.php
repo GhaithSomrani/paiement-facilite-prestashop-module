@@ -57,6 +57,7 @@ class PaiementFacilite extends PaymentModule
             'displayCustomerAccount',
             'displayBackOfficeHeader',
             'displayOrderDetail',
+            'moduleRoutes',
         ];
 
         foreach ($hooks as $hook) {
@@ -560,9 +561,12 @@ class PaiementFacilite extends PaymentModule
 
     public function hookDisplayBackOfficeHeader()
     {
-        // Self-register displayOrderDetail if not yet registered (added post-install)
+        // Self-register hooks added post-install for existing installations
         if (!$this->isRegisteredInHook('displayOrderDetail')) {
             $this->registerHook('displayOrderDetail');
+        }
+        if (!$this->isRegisteredInHook('moduleRoutes')) {
+            $this->registerHook('moduleRoutes');
         }
 
         $controller = Tools::getValue('controller');
@@ -575,6 +579,26 @@ class PaiementFacilite extends PaymentModule
         ) {
             $this->context->controller->addCSS($this->_path . 'views/css/paiementfacilite.css');
         }
+    }
+
+    /**
+     * Friendly URL for the front request form: /formulaire-de-facilite-de-paiement
+     * instead of /module/paiementfacilite/request.
+     */
+    public function hookModuleRoutes()
+    {
+        return [
+            'module-paiementfacilite-request' => [
+                'controller' => 'request',
+                'rule'       => 'formulaire-de-facilite-de-paiement',
+                'keywords'   => [],
+                'params'     => [
+                    'fc'         => 'module',
+                    'module'     => 'paiementfacilite',
+                    'controller' => 'request',
+                ],
+            ],
+        ];
     }
 
     // -------------------------------------------------------------------------
