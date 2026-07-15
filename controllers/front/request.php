@@ -121,12 +121,6 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             }
         }
 
-        // Pre-fill birthday from customer profile
-        $birthday = '';
-        if ($this->context->customer->birthday && $this->context->customer->birthday !== '0000-00-00') {
-            $birthday = $this->context->customer->birthday;
-        }
-
         // Read and clear the error cookie so JS can display it
         $errors_json = '';
         if (!empty($this->context->cookie->pf_errors)) {
@@ -148,7 +142,6 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'pf_order_items'          => $order_items,
             'pf_order_fees'           => $order_fees,
             'pf_order_amount'         => $order_amount,
-            'pf_birthday'             => $birthday,
             'pf_form_action'          => $this->context->link->getModuleLink('paiementfacilite', 'request', [], true),
             'pf_ajax_url'             => $this->context->link->getModuleLink('paiementfacilite', 'request', ['ajax' => 1], true),
             'pf_is_from_checkout'     => $order_amount > 0,

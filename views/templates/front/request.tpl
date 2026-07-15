@@ -194,7 +194,7 @@
         <div id="pf-personal-fields">
           <div class="pf-grid">
             <div class="pf-field">
-              <input type="date" name="date_naissance" id="pf-date-naissance" value="{$pf_birthday|escape:'html'}"
+              <input type="date" name="date_naissance" id="pf-date-naissance"
                 max="{$smarty.now|date_format:'%Y-%m-%d'}"
                 placeholder="{l s='Date de naissance *' mod='paiementfacilite'}">
             </div>
