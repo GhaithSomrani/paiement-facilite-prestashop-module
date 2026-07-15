@@ -25,9 +25,26 @@
     initDocumentUploads();
     initNavButtons();
     initAddressModal();
+    initDatePlaceholders();
     initDraft();
     updateProgressBar();
   });
+
+  /* ── Date-of-birth placeholder ──
+     type="date" inputs ignore the placeholder attribute and always show the
+     browser's own locale format (e.g. jj/mm/aaaa). Downgrade to type="text"
+     while empty so the placeholder shows, and switch back to type="date" on
+     focus (or once a value is set) to get the native picker. */
+  function syncDateInputType($input) {
+    $input.attr('type', $input.val() ? 'date' : 'text');
+  }
+
+  function initDatePlaceholders() {
+    var $fields = $('#pf-date-naissance, #pf-date-naissance-gerant');
+    $fields.each(function () { syncDateInputType($(this)); });
+    $fields.on('focus', function () { $(this).attr('type', 'date'); });
+    $fields.on('blur', function () { syncDateInputType($(this)); });
+  }
 
   /* ── Errors from cookie ── */
   function initErrors() {
@@ -740,12 +757,12 @@
     }
 
     // Step 4 — personal / company fields
-    if (draft.date_naissance) $('#pf-date-naissance').val(draft.date_naissance);
+    if (draft.date_naissance) syncDateInputType($('#pf-date-naissance').val(draft.date_naissance));
     if (draft.cin) $('#pf-cin').val(draft.cin);
     if (draft.fonction) $('#pf-fonction').val(draft.fonction);
     if (draft.raison_sociale) $('#pf-raison-sociale').val(draft.raison_sociale);
     if (draft.representant_legal) $('#pf-representant-legal').val(draft.representant_legal);
-    if (draft.date_naissance_gerant) $('#pf-date-naissance-gerant').val(draft.date_naissance_gerant);
+    if (draft.date_naissance_gerant) syncDateInputType($('#pf-date-naissance-gerant').val(draft.date_naissance_gerant));
     if (draft.telephone_gerant) $('#pf-telephone-gerant').val(draft.telephone_gerant);
     if (draft.email_gerant) $('#pf-email-gerant').val(draft.email_gerant);
     if (draft.cin_gerant) $('#pf-cin-gerant').val(draft.cin_gerant);
