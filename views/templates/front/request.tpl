@@ -317,6 +317,10 @@
               <input type="radio" name="nb_mois" value="{$m}" {if $m == 6} checked{/if}> {$m}
             </label>
           {/for}
+          {* Bank-processing option — bypasses the credit calculation, terms set later by the bank *}
+          <label class="pf-toggle-btn" data-mois="36">
+            <input type="radio" name="nb_mois" value="36"> {l s="Jusqu'à 36 mois" mod='paiementfacilite'}
+          </label>
         </div>
 
         {* Interest info — shown by JS only when a range with interest applies *}
@@ -325,7 +329,7 @@
         </div>
         <input type="hidden" name="interest_rate" id="pf-interest-rate" value="0">
 
-        <div class="pf-credit-boxes">
+        <div class="pf-credit-boxes" id="pf-credit-boxes">
           <div class="pf-credit-box">
             <div class="pf-credit-box-label">{l s='1ère tranche (min = 1 mensualité)' mod='paiementfacilite'}</div>
             <input type="number" name="premiere_tranche" id="pf-tranche" step="0.01" required placeholder="0.00">
@@ -337,6 +341,12 @@
             <div class="pf-credit-box-value"><span id="pf-mensualite-display">—</span> DT</div>
             <input type="hidden" name="mensualite" id="pf-mensualite" value="0">
           </div>
+        </div>
+
+        {* Replaces the boxes above when "Jusqu'à 36 mois" is selected *}
+        <div id="pf-bank-processing-notice"
+          style="display:none;margin:12px 0;padding:14px 16px;background:#f1f3f5;">
+          {l s='Les échéances et le taux dépendront du dossier et seront communiqués une fois validé par la banque.' mod='paiementfacilite'}
         </div>
 
         <div class="pf-field" style="margin-top:20px;">

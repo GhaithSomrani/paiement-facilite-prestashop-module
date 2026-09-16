@@ -39,10 +39,13 @@
         &nbsp;{l s='ou WhatsApp ou Messenger.' mod='paiementfacilite'}
       </p>
     </div>
+
+    {if !$pf_is_bank_36}
     <a href="{$pf_pdf_url|escape:'html'}" class="pf-submit-btn"
        style="display:inline-block; text-decoration:none; margin-bottom:14px; width:100%;">
       &#128462; {l s='Télécharger le document PDF' mod='paiementfacilite'}
     </a>
+    {/if}
 
     {if $pf_order_url}
     <a href="{$pf_order_url|escape:'html'}" class="pf-btn-prev"
@@ -53,6 +56,7 @@
 
   </div>
 
+  {if !$pf_is_bank_36}
   <script>
     (function () {
       var key = 'pf_pdf_dl_{$pf_request->id|intval}';
@@ -64,6 +68,7 @@
       }
     })();
   </script>
+  {/if}
 
 {else}
 
@@ -84,7 +89,7 @@
     </p>
   </div>
 
-  <div class="pf-summary-grid">
+  <div class="pf-summary-grid"{if $pf_is_bank_36} style="grid-template-columns:1fr; max-width:520px; margin:0 auto;"{/if}>
 
     {* LEFT: summary + actions *}
     <div>
@@ -137,6 +142,17 @@
             <td class="pf-td-label">{l s='Montant des achats' mod='paiementfacilite'}</td>
             <td class="pf-td-value">{$pf_request->credit_amount|string_format:"%.2f"} DT</td>
           </tr>
+          {if $pf_is_bank_36}
+          <tr>
+            <td class="pf-td-label">{l s='Financement' mod='paiementfacilite'}</td>
+            <td class="pf-td-value">{l s="Jusqu'à 36 mois" mod='paiementfacilite'}</td>
+          </tr>
+          <tr>
+            <td colspan="2" style="padding-top:6px;font-size:12px;color:var(--pf-muted);line-height:1.6;">
+              {l s='Les échéances et le taux dépendront du dossier et seront communiqués une fois validé par la banque.' mod='paiementfacilite'}
+            </td>
+          </tr>
+          {else}
           <tr>
             <td class="pf-td-label">{l s='Taux d\'intérêts' mod='paiementfacilite'}</td>
             <td class="pf-td-value">
@@ -163,14 +179,17 @@
             <td class="pf-td-label">{l s='Nombre de mois' mod='paiementfacilite'}</td>
             <td class="pf-td-value">{$pf_request->nb_mois|intval} {l s='mois' mod='paiementfacilite'}</td>
           </tr>
+          {/if}
         </table>
 
         <hr class="pf-summary-sep">
 
+        {if !$pf_is_bank_36}
         <a href="{$pf_pdf_url|escape:'html'}" class="pf-btn-prev"
            style="display:block; text-align:center; text-decoration:none; margin-bottom:14px; width:100%;">
           &#128462; {l s='Télécharger le document PDF' mod='paiementfacilite'}
         </a>
+        {/if}
 
         <form method="post" action="{$pf_confirm_url|escape:'html'}">
           <input type="hidden" name="confirm_request" value="1">
@@ -188,6 +207,7 @@
     </div>
 
     {* RIGHT: PDF preview *}
+    {if !$pf_is_bank_36}
     <div>
       <div class="pf-section" style="padding:0; margin-bottom:0; overflow:hidden;">
         <div class="pf-preview-header">
@@ -206,6 +226,7 @@
         ></iframe>
       </div>
     </div>
+    {/if}
 
   </div>{* /pf-summary-grid *}
 

@@ -274,7 +274,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $nb_mois          = (int) Tools::getValue('nb_mois') ?: 12;
         $commentaire      = Tools::getValue('commentaire');
 
-        if ($nb_mois < 2 || $nb_mois > 12) {
+        // 36 is the "Traitement à la banque sur dossier" option — not a regular month count
+        if ($nb_mois !== 36 && ($nb_mois < 2 || $nb_mois > 12)) {
             $nb_mois = 6;
         }
 
@@ -319,22 +320,28 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // Total cost with interest applied on full credit amount
         $total_with_interest = $credit_amount * (1 + $interest_rate / 100);
 
-        // Minimum première tranche = total ÷ nb_mois
-        $min_tranche = round($total_with_interest / $nb_mois, 2);
-        if ($premiere_tranche < $min_tranche) {
-            $errors[] = $this->module->l('La 1ère tranche doit être au minimum égale à une mensualité.');
-        }
+        if ($nb_mois === 36) {
+            // "Jusqu'à 36 mois" — sent to the bank as-is; tranche/rate are decided once the file is validated
+            $premiere_tranche = 0.0;
+            $mensualite       = 0.0;
+        } else {
+            // Minimum première tranche = total ÷ nb_mois
+            $min_tranche = round($total_with_interest / $nb_mois, 2);
+            if ($premiere_tranche < $min_tranche) {
+                $errors[] = $this->module->l('La 1ère tranche doit être au minimum égale à une mensualité.');
+            }
 
-        // Maximum première tranche = total with interest (cannot overpay)
-        $max_tranche = round($total_with_interest, 2);
-        if ($premiere_tranche > $max_tranche) {
-            $errors[] = $this->module->l('La 1ère tranche ne peut pas dépasser le montant total avec intérêts.');
-        }
+            // Maximum première tranche = total with interest (cannot overpay)
+            $max_tranche = round($total_with_interest, 2);
+            if ($premiere_tranche > $max_tranche) {
+                $errors[] = $this->module->l('La 1ère tranche ne peut pas dépasser le montant total avec intérêts.');
+            }
 
-        // Mensualité = remaining balance ÷ (nb_mois - 1)
-        $mensualite = ($nb_mois > 1)
-            ? round(($total_with_interest - $premiere_tranche) / ($nb_mois - 1), 2)
-            : 0;
+            // Mensualité = remaining balance ÷ (nb_mois - 1)
+            $mensualite = ($nb_mois > 1)
+                ? round(($total_with_interest - $premiere_tranche) / ($nb_mois - 1), 2)
+                : 0;
+        }
 
         // --- Documents (only if not partner org) ---
         if (!$belongs_to_partner && !$errors) {
@@ -380,7 +387,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // --- Process document uploads (must happen now, files won't survive redirect) ---
-        if (!$belongs_to_partner) {
+        // "Jusqu'à 36 mois" always requires documents, even for partner-org members
+        if (!$belongs_to_partner || $nb_mois === 36) {
             $this->processDocumentUploads($request->id, $is_company, $is_retired);
         }
 
@@ -389,13 +397,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'DELETE FROM `' . _DB_PREFIX_ . 'pf_drafts` WHERE `id_customer` = ' . $id_customer
         );
 
-        // --- Redirect to summary/preview page (order creation deferred to confirm step) ---
-        Tools::redirect($this->context->link->getModuleLink(
-            'paiementfacilite',
-            'request',
-            ['summary' => 1, 'id_request' => (int) $request->id],
-            true
-        ));
+        // --- Confirm immediately: create the order (if any) and send emails right after step 6 ---
+        Tools::redirect($this->confirmRequest($request));
     }
 
     /**
@@ -721,7 +724,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // Check if already confirmed
         $linked    = $request->getLinkedOrder();
         $confirmed = (bool) $linked;
-        $id_order  = $linked ? (int) $linked : 0;
+        $id_order  = $linked ? (int) $linked['id_order'] : 0;
         $order_url = '';
         if ($id_order) {
             $order = new Order($id_order);
@@ -743,6 +746,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'pf_confirmed'       => $confirmed,
             'pf_id_order'        => $id_order,
             'pf_order_url'       => $order_url,
+            'pf_is_bank_36'      => ((int) $request->nb_mois === 36),
         ]);
 
         $this->setTemplate('module:paiementfacilite/views/templates/front/summary.tpl');
@@ -752,9 +756,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
     {
         $request = $this->loadOwnedRequest($id_request);
 
-        // Idempotency: already confirmed
-        $linked = $request->getLinkedOrder();
-        if ($linked) {
+        // Idempotency: already confirmed (e.g. a stale link to an old two-step request)
+        if ($request->getLinkedOrder()) {
             Tools::redirect($this->context->link->getModuleLink(
                 'paiementfacilite', 'request',
                 ['summary' => 1, 'id_request' => $id_request], true
@@ -762,7 +765,19 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             return;
         }
 
-        // Create order from active cart (checkout flow)
+        Tools::redirect($this->confirmRequest($request));
+    }
+
+    /**
+     * Create the order from the active cart (if any), link it to the request, and
+     * send the confirmation emails. Called right after the wizard's step 6 submit —
+     * there is no separate "Confirmer ma demande" click in the normal flow anymore.
+     *
+     * @return string Redirect URL: order-confirmation if an order was created,
+     *                 otherwise the summary page (standalone request, no cart).
+     */
+    private function confirmRequest(PaiementFaciliteRequest $request)
+    {
         $cart          = $this->context->cart;
         $id_order      = 0;
         $cart_id_saved = $cart ? (int) $cart->id : 0;
@@ -777,19 +792,17 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $this->module->sendConfirmationEmail($request->id);
 
         if ($id_order && $cart_id_saved) {
-            $url = $this->context->link->getPageLink('order-confirmation', true, null, [
+            return $this->context->link->getPageLink('order-confirmation', true, null, [
                 'id_cart'   => $cart_id_saved,
                 'id_module' => (int) $this->module->id,
                 'id_order'  => $id_order,
                 'key'       => $this->context->customer->secure_key,
             ]);
-        } else {
-            $url = $this->context->link->getModuleLink(
-                'paiementfacilite', 'request',
-                ['summary' => 1, 'id_request' => $id_request], true
-            );
         }
 
-        Tools::redirect($url);
+        return $this->context->link->getModuleLink(
+            'paiementfacilite', 'request',
+            ['summary' => 1, 'id_request' => (int) $request->id], true
+        );
     }
 }

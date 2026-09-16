@@ -107,8 +107,13 @@
     $('#pf-step5-submit').hide();
   }
 
+  // "Jusqu'à 36 mois" always requires documents, even for partner-org members
+  function isBank36() {
+    return parseInt($('input[name=nb_mois]:checked').val(), 10) === 36;
+  }
+
   function updateDocsStep() {
-    if (PF.belongsToPartner) {
+    if (PF.belongsToPartner && !isBank36()) {
       $('.pf-doc-group').hide();
       $('#pf-docs-bypass').show();
       $('#pf-docs-step input[type=file]').removeAttr('required');
@@ -219,6 +224,32 @@
       updateMonthButtons(amount);
       var nbMois = getNbMois();
 
+      // Selecting/leaving "Jusqu'à 36 mois" changes whether step 6 requires documents
+      updateDocsStep();
+
+      // Keep the amount display/slider fill in sync regardless of the branch below
+      if ($slider.attr('type') === 'range') {
+        var fillPct = ((amount - parseFloat($slider.attr('min'))) /
+          (parseFloat($slider.attr('max')) - parseFloat($slider.attr('min')))) * 100;
+        $slider.css('--fill', fillPct.toFixed(1) + '%');
+      }
+      $display.text(amount.toFixed(0));
+
+      // "Jusqu'à 36 mois" — sent to the bank as-is, no tranche/mensualité to compute here
+      if (nbMois === 36) {
+        $('#pf-credit-boxes').hide();
+        $('#pf-interest-badge').hide();
+        $('#pf-bank-processing-notice').show();
+        $tranche.prop('required', false);
+        $tranche.val('0');
+        $mensual.val('0');
+        $('#pf-interest-rate').val('0.00');
+        return;
+      }
+      $('#pf-credit-boxes').show();
+      $('#pf-bank-processing-notice').hide();
+      $tranche.prop('required', true);
+
       // Interest rate comes from the selected month's config (0 for partner-org members)
       var cfg = getMonthConfig(nbMois);
       var interestRate = (!PF.belongsToPartner && cfg) ? cfg.interestRate : 0;
@@ -229,14 +260,6 @@
       // Minimum première tranche = total ÷ nb_mois
       var minTr = Math.round(totalWithInterest / nbMois * 100) / 100;
 
-      // Update slider fill (range inputs only)
-      if ($slider.attr('type') === 'range') {
-        var pct = ((amount - parseFloat($slider.attr('min'))) /
-          (parseFloat($slider.attr('max')) - parseFloat($slider.attr('min')))) * 100;
-        $slider.css('--fill', pct.toFixed(1) + '%');
-      }
-
-      $display.text(amount.toFixed(0));
       $moisDisp.text(nbMois - 1);
 
       // Max première tranche = total with interest (can't overpay)
@@ -485,29 +508,33 @@
 
       case 5:
         var amount = parseFloat($('#pf-credit-slider').val()) || 0;
-        var tranche = parseFloat($('#pf-tranche').val()) || 0;
         var nbMoisV = parseInt($('input[name=nb_mois]:checked').val(), 10) || 12;
-        var cfgV = (PF_CONFIG.monthConfigs && PF_CONFIG.monthConfigs[String(nbMoisV)]) || null;
-        var rateV = (!PF.belongsToPartner && cfgV) ? cfgV.interestRate : 0;
-        var totalV = Math.round(amount * (1 + rateV / 100) * 10000) / 10000;
         // Only check min/max range for standalone (free-slider) requests
         if (!PF_CONFIG.isFromCheckout && (amount < PF_CONFIG.minAmount || amount > PF_CONFIG.maxAmount)) {
           errors.push('Le montant doit être entre ' + PF_CONFIG.minAmount + ' DT et ' + PF_CONFIG.maxAmount + ' DT.');
         }
-        // Min tranche = total / nb_mois
-        var minTrV = Math.round(totalV / nbMoisV * 100) / 100;
-        if (tranche < minTrV - 0.01) {
-          errors.push('La 1ère tranche minimum est ' + minTrV.toFixed(2) + ' DT (total ÷ ' + nbMoisV + ' mois).');
-        }
-        // Max tranche = total with interest
-        var maxTrV = Math.round(totalV * 100) / 100;
-        if (tranche > maxTrV + 0.01) {
-          errors.push('La 1ère tranche maximum est ' + maxTrV.toFixed(2) + ' DT (total avec intérêts).');
+        // "Jusqu'à 36 mois" — bank decides the tranche/rate later, nothing to check here
+        if (nbMoisV !== 36) {
+          var tranche = parseFloat($('#pf-tranche').val()) || 0;
+          var cfgV = (PF_CONFIG.monthConfigs && PF_CONFIG.monthConfigs[String(nbMoisV)]) || null;
+          var rateV = (!PF.belongsToPartner && cfgV) ? cfgV.interestRate : 0;
+          var totalV = Math.round(amount * (1 + rateV / 100) * 10000) / 10000;
+          // Min tranche = total / nb_mois
+          var minTrV = Math.round(totalV / nbMoisV * 100) / 100;
+          if (tranche < minTrV - 0.01) {
+            errors.push('La 1ère tranche minimum est ' + minTrV.toFixed(2) + ' DT (total ÷ ' + nbMoisV + ' mois).');
+          }
+          // Max tranche = total with interest
+          var maxTrV = Math.round(totalV * 100) / 100;
+          if (tranche > maxTrV + 0.01) {
+            errors.push('La 1ère tranche maximum est ' + maxTrV.toFixed(2) + ' DT (total avec intérêts).');
+          }
         }
         break;
 
       case 6:
-        if (!PF.belongsToPartner) {
+        // "Jusqu'à 36 mois" always requires documents, even for partner-org members
+        if (!PF.belongsToPartner || isBank36()) {
           // Common for everyone: rib + at least one relevé
           var $rib = $('input[name="rib"]');
           if ($rib.length && (!$rib[0].files || !$rib[0].files.length)) {
