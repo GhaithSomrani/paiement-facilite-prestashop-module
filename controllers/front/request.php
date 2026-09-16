@@ -129,6 +129,19 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
         $max_months = Db::getInstance()->getValue('select Max(nb_mois) from ' . _DB_PREFIX_ . 'pf_month_configs');
 
+        // Server-side draft (cross-device resume) — falls back to localStorage in JS if none
+        $server_draft_json = '';
+        $draft_row = Db::getInstance()->getRow(
+            'SELECT `step`, `data` FROM `' . _DB_PREFIX_ . 'pf_drafts` WHERE `id_customer` = ' . $id_customer
+        );
+        if ($draft_row) {
+            $draft_data = json_decode($draft_row['data'], true);
+            if (is_array($draft_data)) {
+                $draft_data['current_step'] = (int) $draft_row['step'];
+                $server_draft_json = json_encode($draft_data);
+            }
+        }
+
         $this->context->smarty->assign([
             'pf_id_order'             => $id_order,
             'pf_id_cart'              => $id_cart,
@@ -150,6 +163,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'customer_email'          => $this->context->customer->email,
             'max_months'             => $max_months,
             'pf_errors_json'          => $errors_json,
+            'pf_server_draft_json'    => $server_draft_json,
         ]);
 
         $this->setTemplate('module:paiementfacilite/views/templates/front/request.tpl');
@@ -370,6 +384,11 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $this->processDocumentUploads($request->id, $is_company, $is_retired);
         }
 
+        // Request created — the resume draft no longer applies
+        Db::getInstance()->execute(
+            'DELETE FROM `' . _DB_PREFIX_ . 'pf_drafts` WHERE `id_customer` = ' . $id_customer
+        );
+
         // --- Redirect to summary/preview page (order creation deferred to confirm step) ---
         Tools::redirect($this->context->link->getModuleLink(
             'paiementfacilite',
@@ -505,6 +524,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             case 'getAddresses':
                 $this->ajaxGetAddresses();
                 break;
+            case 'saveDraft':
+                $this->ajaxSaveDraft();
+                break;
             default:
                 $this->ajaxReturn(['success' => false, 'error' => 'Unknown action']);
         }
@@ -554,6 +576,25 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $id_lang   = (int) $this->context->language->id;
         $addresses = $this->context->customer->getAddresses($id_lang);
         $this->ajaxReturn(['success' => true, 'addresses' => $addresses]);
+    }
+
+    private function ajaxSaveDraft()
+    {
+        $id_customer = (int) $this->context->customer->id;
+        $step        = (int) Tools::getValue('step');
+        $data        = (string) Tools::getValue('data');
+
+        if ($step < 1 || $step > 6 || strlen($data) > 20000 || json_decode($data) === null) {
+            $this->ajaxReturn(['success' => false, 'error' => 'Invalid draft data.']);
+            return;
+        }
+
+        Db::getInstance()->execute(
+            'REPLACE INTO `' . _DB_PREFIX_ . 'pf_drafts` (`id_customer`, `step`, `data`, `date_upd`)
+             VALUES (' . $id_customer . ', ' . $step . ', \'' . pSQL($data) . '\', NOW())'
+        );
+
+        $this->ajaxReturn(['success' => true]);
     }
 
     private function ajaxReturn(array $data)

@@ -65,46 +65,34 @@
 
         <div class="pf-client-types">
           <label class="pf-client-card" data-value="0">
-            <input type="radio" name="is_company" value="0" class="pf-radio-type" required>
+            <input type="radio" name="is_retired" value="0" class="pf-radio-type" required>
             <span class="pf-client-card-inner">
               <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5"
                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <circle cx="9" cy="8" r="3.5" />
-                <path d="M2.5 19c.7-3 3.4-4.5 6.5-4.5s5.8 1.5 6.5 4.5" />
-                <circle cx="17" cy="7" r="2.5" />
-                <path d="M15 13.5c1.5-.6 3-.8 4.5-.4 1.4.4 2.2 1.3 2.5 2.4" />
+                <rect x="3" y="8" width="18" height="12" rx="2" />
+                <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <path d="M3 13h18" />
               </svg>
-              <span class="pf-client-label">{l s='Salarié ou Retraité' mod='paiementfacilite'}</span>
+              <span class="pf-client-label">{l s='Salarié' mod='paiementfacilite'}</span>
             </span>
           </label>
 
           <label class="pf-client-card" data-value="1">
-            <input type="radio" name="is_company" value="1" class="pf-radio-type">
+            <input type="radio" name="is_retired" value="1" class="pf-radio-type">
             <span class="pf-client-card-inner">
               <svg viewBox="0 0 24 24" width="44" height="44" fill="none" stroke="currentColor" stroke-width="1.5"
                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M4 21V7l8-4 8 4v14" />
-                <path d="M4 21h16" />
-                <path d="M9 21v-5h6v5" />
-                <path d="M8 9h2M14 9h2M8 12h2M14 12h2" />
+                <circle cx="12" cy="12" r="5" />
+                <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.6 4.6l2.1 2.1M17.3 17.3l2.1 2.1M4.6 19.4l2.1-2.1M17.3 6.7l2.1-2.1" />
               </svg>
-              <span class="pf-client-label">{l s='Société' mod='paiementfacilite'}</span>
+              <span class="pf-client-label">{l s='Retraité' mod='paiementfacilite'}</span>
             </span>
           </label>
         </div>
 
-        {* Retraité toggle *}
-        <div id="pf-retired-block" style="display:none;">
-          <p class="pf-retired-question">{l s='Êtes-vous retraité(e) ?' mod='paiementfacilite'}</p>
-          <div class="pf-toggle-row">
-            <label class="pf-toggle-btn is-selected" data-value="0">
-              <input type="radio" name="is_retired" value="0" checked> {l s='Non' mod='paiementfacilite'}
-            </label>
-            <label class="pf-toggle-btn" data-value="1">
-              <input type="radio" name="is_retired" value="1"> {l s='Oui' mod='paiementfacilite'}
-            </label>
-          </div>
-        </div>
+        {* Company path removed from the form (still supported in the back office for
+           already-submitted requests); is_company is now always 0 for new requests. *}
+        <input type="hidden" name="is_company" id="pf_is_company" value="0">
 
         <div class="pf-nav">
           <span></span>
@@ -524,6 +512,7 @@
       isFromCheckout: {if $pf_is_from_checkout}true{else}false{/if},
       hasAddresses:   {if $pf_addresses}true{else}false{/if},
       errorsJson:     {if $pf_errors_json}'{$pf_errors_json|escape:'javascript'}'{else}null{/if},
+      serverDraft:    {if $pf_server_draft_json}{$pf_server_draft_json nofilter}{else}null{/if},
       orderAmount:    {$pf_order_amount|floatval},
       monthConfigs:   {$pf_month_configs_json nofilter},
     };

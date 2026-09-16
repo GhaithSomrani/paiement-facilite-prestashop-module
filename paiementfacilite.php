@@ -237,12 +237,25 @@ class PaiementFacilite extends PaymentModule
             return false;
         }
 
+        // Incomplete-forms (drafts) tab
+        $tab5 = new Tab();
+        $tab5->active     = 1;
+        $tab5->class_name = 'AdminPaiementFaciliteDrafts';
+        $tab5->module     = $this->name;
+        $tab5->id_parent  = (int) $parent->id;
+        foreach (Language::getLanguages() as $lang) {
+            $tab5->name[$lang['id_lang']] = 'Formulaires incomplets';
+        }
+        if (!$tab5->add()) {
+            return false;
+        }
+
         return true;
     }
 
     private function uninstallTab()
     {
-        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges', 'AdminPaiementFaciliteParent'] as $class) {
+        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges', 'AdminPaiementFaciliteDrafts', 'AdminPaiementFaciliteParent'] as $class) {
             $id_tab = (int) Tab::getIdFromClassName($class);
             if ($id_tab) {
                 (new Tab($id_tab))->delete();
@@ -343,6 +356,36 @@ class PaiementFacilite extends PaymentModule
             }
 
             Configuration::updateValue('PF_VERSION', '1.2.0');
+        }
+
+        // 1.3.0 — server-side per-step draft (cross-device resume)
+        if (version_compare($version, '1.3.0', '<')) {
+            Db::getInstance()->execute(
+                'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_drafts` (
+                    `id_customer` int(10) unsigned NOT NULL,
+                    `step`        tinyint(3) unsigned NOT NULL DEFAULT 1,
+                    `data`        text NOT NULL,
+                    `date_upd`    datetime NOT NULL,
+                    PRIMARY KEY (`id_customer`)
+                ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4'
+            );
+
+            if (!Tab::getIdFromClassName('AdminPaiementFaciliteDrafts')) {
+                $parentId = (int) Tab::getIdFromClassName('AdminPaiementFaciliteParent');
+                if ($parentId) {
+                    $tab = new Tab();
+                    $tab->active     = 1;
+                    $tab->class_name = 'AdminPaiementFaciliteDrafts';
+                    $tab->module     = $this->name;
+                    $tab->id_parent  = $parentId;
+                    foreach (Language::getLanguages() as $lang) {
+                        $tab->name[$lang['id_lang']] = 'Formulaires incomplets';
+                    }
+                    $tab->add();
+                }
+            }
+
+            Configuration::updateValue('PF_VERSION', '1.3.0');
         }
     }
 
@@ -570,7 +613,7 @@ class PaiementFacilite extends PaymentModule
         }
 
         $controller = Tools::getValue('controller');
-        $pfControllers = ['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges'];
+        $pfControllers = ['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges', 'AdminPaiementFaciliteDrafts'];
 
         if (
             Tools::getValue('configure') === $this->name

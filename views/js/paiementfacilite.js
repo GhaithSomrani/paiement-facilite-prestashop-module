@@ -58,46 +58,23 @@
     } catch (e) { }
   }
 
-  /* ── Step 1 — client type ── */
+  /* ── Step 1 — client type (Salarié / Retraité — no company path) ── */
   function initTypePicker() {
     $('.pf-client-card').on('click', function () {
       $('.pf-client-card').removeClass('is-selected');
       $(this).addClass('is-selected');
       var val = $(this).data('value');
       $(this).find('input[type=radio]').prop('checked', true);
-      PF.isCompany = (val == 1);
-      toggleRetiredBlock();
-      toggleCompanyFields();
+      PF.isRetired = (val == 1);
       toggleDocBlocks();
       $('#pf-org-select').trigger('change');
     });
 
-    // Retired toggle buttons
+    // Toggle-style buttons used elsewhere (month selector)
     $(document).on('click', '.pf-toggle-btn', function () {
       $(this).closest('.pf-toggle-row').find('.pf-toggle-btn').removeClass('is-selected');
       $(this).addClass('is-selected');
     });
-
-    $('input[name=is_retired]').on('change', function () {
-      PF.isRetired = $(this).val() == 1;
-      toggleDocBlocks();
-    });
-  }
-
-  function toggleRetiredBlock() {
-    $('#pf-retired-block').toggle(!PF.isCompany);
-  }
-
-  function toggleCompanyFields() {
-    if (PF.isCompany) {
-      $('#pf-personal-fields').hide();
-      $('#pf-company-fields').show();
-      $('#pf-step4-title').text('Informations de la société');
-    } else {
-      $('#pf-personal-fields').show();
-      $('#pf-company-fields').hide();
-      $('#pf-step4-title').text('Informations personnelles');
-    }
   }
 
   /* ── Step 2 — organisation ── */
@@ -474,8 +451,8 @@
 
     switch (step) {
       case 1:
-        if (!$('input[name=is_company]:checked').length) {
-          errors.push('Veuillez sélectionner votre statut (Salarié/Retraité ou Société).');
+        if (!$('input[name=is_retired]:checked').length) {
+          errors.push('Veuillez sélectionner votre statut (Salarié ou Retraité).');
         }
         break;
 
@@ -646,6 +623,14 @@
       return;
     }
     if (typeof PF_CONFIG === 'undefined') return;
+
+    // Server draft wins when present (works across devices/browsers);
+    // localStorage is only the same-device fallback.
+    if (PF_CONFIG.serverDraft && parseInt(PF_CONFIG.serverDraft.current_step) > 1) {
+      showDraftBanner(PF_CONFIG.serverDraft);
+      return;
+    }
+
     var raw;
     try { raw = localStorage.getItem(DRAFT_KEY); } catch (e) { return; }
     if (!raw) return;
@@ -703,6 +688,12 @@
       commentaire: $('#pf-commentaire').val() || '',
     };
     try { localStorage.setItem(DRAFT_KEY, JSON.stringify(data)); } catch (e) { }
+
+    // Best-effort server copy so resume works across devices/browsers too.
+    // Fire-and-forget: a dropped ping just falls back to localStorage (same device only).
+    if (typeof PF_CONFIG !== 'undefined' && PF_CONFIG.ajaxUrl) {
+      $.post(PF_CONFIG.ajaxUrl, { action: 'saveDraft', step: nextStep, data: JSON.stringify(data) });
+    }
   }
 
   function restoreDraft(draft) {
@@ -710,20 +701,11 @@
     PF.isRetired = draft.is_retired == 1;
     PF.belongsToPartner = draft.belongs_to_partner == 1;
 
-    // Step 1 — client type
-    var typeVal = PF.isCompany ? '1' : '0';
-    $('input[name=is_company][value="' + typeVal + '"]').prop('checked', true);
+    // Step 1 — client type (Salarié / Retraité)
+    var typeVal = PF.isRetired ? '1' : '0';
+    $('input[name=is_retired][value="' + typeVal + '"]').prop('checked', true);
     $('.pf-client-card').removeClass('is-selected');
     $('.pf-client-card[data-value="' + typeVal + '"]').addClass('is-selected');
-    toggleRetiredBlock();
-    toggleCompanyFields();
-
-    if (!PF.isCompany) {
-      var retiredVal = PF.isRetired ? '1' : '0';
-      $('input[name=is_retired][value="' + retiredVal + '"]').prop('checked', true);
-      $('input[name=is_retired]').closest('.pf-toggle-row').find('.pf-toggle-btn').removeClass('is-selected');
-      $('input[name=is_retired][value="' + retiredVal + '"]').closest('.pf-toggle-btn').addClass('is-selected');
-    }
     toggleDocBlocks();
 
     // Step 2 — organisation

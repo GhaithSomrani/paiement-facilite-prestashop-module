@@ -107,6 +107,15 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_month_configs` (
     UNIQUE KEY `nb_mois` (`nb_mois`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
 
+// Per-customer step-form draft (single row per customer, upserted on each step)
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_drafts` (
+    `id_customer` int(10) unsigned NOT NULL,
+    `step`        tinyint(3) unsigned NOT NULL DEFAULT 1,
+    `data`        text NOT NULL,
+    `date_upd`    datetime NOT NULL,
+    PRIMARY KEY (`id_customer`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
 // Seed the 5 workflow statuses (INSERT IGNORE — safe to re-run)
 $sql[] = 'INSERT IGNORE INTO `' . _DB_PREFIX_ . 'pf_statuses`
     (`code`, `name`, `color`, `id_order_state`, `sort_order`, `date_add`, `date_upd`) VALUES
