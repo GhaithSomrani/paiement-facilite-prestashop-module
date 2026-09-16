@@ -7,6 +7,7 @@ require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteRequest
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteOrganisation.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteDocument.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteMonthConfig.php';
+require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/PaiementFaciliteStatus.php';
 require_once _PS_MODULE_DIR_ . 'paiementfacilite/classes/pdf/HTMLTemplateCessionSalairePDF.php';
 
 class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
@@ -34,7 +35,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // These pages are set up by postProcess(); don't overwrite the template here
         if (Tools::getValue('id_request') && (
             Tools::getValue('confirmed') ||
-            Tools::getValue('summary')
+            Tools::getValue('summary') ||
+            Tools::getValue('details')
         )) {
             return;
         }
@@ -49,6 +51,17 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         if (Tools::isSubmit('submitPFRequest')) {
             $this->processForm();
             return;
+        }
+
+        // "Mes demandes" — the customer-account entry point (no id_cart, unlike the
+        // checkout payment-option link) shows past requests first when there are any;
+        // ?new=1 always bypasses this to jump straight into the wizard.
+        if (!Tools::getValue('id_cart') && !Tools::getValue('new')) {
+            $existing = PaiementFaciliteRequest::getByCustomer((int) $this->context->customer->id);
+            if ($existing) {
+                $this->initContentMyRequests($existing);
+                return;
+            }
         }
 
         // Detect context
@@ -167,6 +180,28 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         ]);
 
         $this->setTemplate('module:paiementfacilite/views/templates/front/request.tpl');
+    }
+
+    /**
+     * "Mes demandes" — list of the customer's past requests, shown instead of the
+     * wizard when they already have at least one (see the guard in initContent()).
+     */
+    private function initContentMyRequests(array $requests)
+    {
+        $status_map = [];
+        foreach (PaiementFaciliteStatus::getAll() as $s) {
+            $status_map[$s['code']] = ['name' => $s['name'], 'color' => $s['color']];
+        }
+
+        $this->context->smarty->assign([
+            'pf_my_requests'   => $requests,
+            'pf_status_map'    => $status_map,
+            'pf_new_url'       => $this->context->link->getModuleLink('paiementfacilite', 'request', ['new' => 1], true),
+            'pf_details_url'   => $this->context->link->getModuleLink('paiementfacilite', 'request', ['details' => 1], true),
+            'pf_pdf_url'       => $this->context->link->getModuleLink('paiementfacilite', 'request', ['download_pdf' => 1], true),
+        ]);
+
+        $this->setTemplate('module:paiementfacilite/views/templates/front/mydemands.tpl');
     }
 
     // -------------------------------------------------------------------------
@@ -665,6 +700,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $this->handlePdfDownload($id_request);
         } elseif (Tools::getValue('summary') && $id_request) {
             $this->initContentSummary($id_request);
+        } elseif (Tools::getValue('details') && $id_request) {
+            $this->initContentDetails($id_request);
         } elseif (Tools::getValue('confirmed') && $id_request) {
             Tools::redirect($this->context->link->getModuleLink(
                 'paiementfacilite', 'request',
@@ -750,6 +787,45 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         ]);
 
         $this->setTemplate('module:paiementfacilite/views/templates/front/summary.tpl');
+    }
+
+    /**
+     * Read-only detail page for one past request — reached from "Mes demandes".
+     * Unlike the summary/recap page, this never shows the confirm form or PDF preview.
+     */
+    private function initContentDetails($id_request)
+    {
+        $request  = $this->loadOwnedRequest($id_request);
+        $customer = new Customer((int) $request->id_customer);
+        $address  = new Address((int) $request->id_address);
+
+        $org_name = '';
+        if ($request->id_organisation) {
+            $org = new PaiementFaciliteOrganisation((int) $request->id_organisation);
+            if (Validate::isLoadedObject($org)) {
+                $org_name = $org->name;
+            }
+        } elseif ($request->organisation_autre) {
+            $org_name = $request->organisation_autre;
+        }
+
+        $credit_reste = round((float) $request->credit_amount - (float) $request->premiere_tranche, 3);
+        $status_row   = PaiementFaciliteStatus::getByCode($request->status);
+
+        $this->context->smarty->assign([
+            'pf_request'      => $request,
+            'pf_customer'     => $customer,
+            'pf_address'      => $address,
+            'pf_org_name'     => $org_name,
+            'pf_credit_reste' => $credit_reste,
+            'pf_is_bank_36'   => ((int) $request->nb_mois === 36),
+            'pf_status_name'  => $status_row ? $status_row['name'] : $request->status,
+            'pf_status_color' => $status_row ? $status_row['color'] : '#888888',
+            'pf_pdf_url'      => $this->context->link->getModuleLink('paiementfacilite', 'request', ['download_pdf' => 1, 'id_request' => $id_request], true),
+            'pf_back_url'     => $this->context->link->getModuleLink('paiementfacilite', 'request', [], true),
+        ]);
+
+        $this->setTemplate('module:paiementfacilite/views/templates/front/details.tpl');
     }
 
     private function processConfirmRequest($id_request)
