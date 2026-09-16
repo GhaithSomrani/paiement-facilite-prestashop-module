@@ -58,6 +58,8 @@ class PaiementFacilite extends PaymentModule
             'displayBackOfficeHeader',
             'displayOrderDetail',
             'moduleRoutes',
+            'displayProductsFacilities',
+            'actionFrontControllerSetMedia',
         ];
 
         foreach ($hooks as $hook) {
@@ -463,7 +465,7 @@ class PaiementFacilite extends PaymentModule
 
         $id_cart = $params['cart']->id;
         $option = new PrestaShop\PrestaShop\Core\Payment\PaymentOption();
-        $option->setCallToActionText($this->l('Paiement par facilité / traite'));
+        $option->setCallToActionText($this->l('Paiement par facilité '));
         $option->setAction($this->context->link->getModuleLink($this->name, 'request', ['id_cart' => $id_cart], true));
 
 
@@ -483,6 +485,79 @@ class PaiementFacilite extends PaymentModule
             return [];
         }
         return [$option];
+    }
+
+    /**
+     * Registers the product-facility CSS/JS early, same as pragmaproductsfacilities'
+     * own hookActionFrontControllerSetMedia() — registering assets from inside
+     * hookDisplayProductsFacilities() itself is too late, the theme has already
+     * built <head> by the time that display hook fires.
+     */
+    public function hookActionFrontControllerSetMedia()
+    {
+        if (!in_array($this->context->controller->php_self, ['product', 'cart', 'checkout', 'order'], true)) {
+            return;
+        }
+
+        $this->context->controller->registerStylesheet(
+            'paiementfacilite-product-facility',
+            $this->_path . 'views/css/product_facility.css',
+            ['media' => 'all', 'priority' => 1000]
+        );
+        $this->context->controller->registerJavascript(
+            'paiementfacilite-product-facility',
+            $this->_path . 'views/js/product_facility.js',
+            ['position' => 'bottom', 'priority' => 1000]
+        );
+    }
+
+    /**
+     * Monthly-payment badge for the product page, styled after
+     * modules/pragmaproductsfacilities/views (grey pill per period, red when active).
+     * Same hook name/contract as pragmaproductsfacilities: the production theme
+     * calls displayProductsFacilities directly with a raw 'price' param.
+     */
+    public function hookDisplayProductsFacilities($params)
+    {
+        if (!$this->active) {
+            return '';
+        }
+
+        $price = isset($params['price'])
+            ? (float) $params['price']
+            : (isset($params['product']['price_amount']) ? (float) $params['product']['price_amount'] : 0.0);
+        $minAmount = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
+        if ($price < $minAmount) {
+            return '';
+        }
+
+        $slices = [];
+        foreach (PaiementFaciliteMonthConfig::getAllConfigsForJs() as $nbMois => $config) {
+            if ($price < $config['minAmount']) {
+                continue;
+            }
+            $totalWithInterest = $price * (1 + $config['interestRate'] / 100);
+            $slices[] = [
+                'nb_mois'    => (int) $nbMois,
+                'mensualite' => $totalWithInterest / (int) $nbMois,
+            ];
+        }
+        if (empty($slices)) {
+            return '';
+        }
+        usort($slices, function ($a, $b) {
+            return $a['nb_mois'] <=> $b['nb_mois'];
+        });
+
+        $this->context->smarty->assign([
+            'pf_product_price'        => $price,
+            'pf_product_slices'       => $slices,
+            'pf_product_id'           => (int) ($params['id_product'] ?? $params['product']['id_product'] ?? Tools::getValue('id_product') ?? 0),
+            'pf_product_attribute_id' => (int) ($params['id_product_attribute'] ?? $params['product']['id_product_attribute'] ?? Tools::getValue('id_product_attribute') ?? 0),
+            'pf_request_url'          => $this->context->link->getModuleLink($this->name, 'request'),
+        ]);
+
+        return $this->fetch('module:paiementfacilite/views/templates/hook/product_facility.tpl');
     }
 
     public function hookPaymentReturn($params)
@@ -610,6 +685,12 @@ class PaiementFacilite extends PaymentModule
         }
         if (!$this->isRegisteredInHook('moduleRoutes')) {
             $this->registerHook('moduleRoutes');
+        }
+        if (!$this->isRegisteredInHook('displayProductsFacilities')) {
+            $this->registerHook('displayProductsFacilities');
+        }
+        if (!$this->isRegisteredInHook('actionFrontControllerSetMedia')) {
+            $this->registerHook('actionFrontControllerSetMedia');
         }
 
         $controller = Tools::getValue('controller');

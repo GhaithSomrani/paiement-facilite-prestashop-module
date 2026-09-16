@@ -676,7 +676,6 @@
 /* ── Mes demandes list ── */
 .pf-list-table {
   width: 100%;
-  min-width: 640px;
   border-collapse: collapse;
   font-size: 13px;
 }
@@ -783,5 +782,9 @@
     width: 26px;
     height: 26px;
     font-size: .75rem;
+  }
+
+  .pf-list-table-actions {
+    flex-direction: column;
   }
 }

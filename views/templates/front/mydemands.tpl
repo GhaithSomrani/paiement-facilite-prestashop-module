@@ -5,7 +5,7 @@
 {/block}
 
 {block name='page_content'}
-<div class="pf-wrapper" style="max-width:900px;">
+<div class="pf-wrapper">
 
   <div class="pf-section">
     <h2 class="pf-section-title" style="margin-bottom:20px;">{l s='Mes demandes' mod='paiementfacilite'}</h2>
@@ -15,8 +15,7 @@
       + {l s='Nouvelle demande' mod='paiementfacilite'}
     </a>
 
-    <div style="overflow-x:auto;">
-      <table class="pf-list-table">
+    <table class="pf-list-table">
         <thead>
           <tr>
             <th>{l s='Demande' mod='paiementfacilite'}</th>
@@ -54,7 +53,6 @@
           {/foreach}
         </tbody>
       </table>
-    </div>
   </div>
 
 </div>

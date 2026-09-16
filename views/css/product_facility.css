@@ -1,0 +1,80 @@
+/**
+ * Copied from modules/pragmaproductsfacilities/views/css/front.css
+ * (product-page facility badge — style/placement kept identical).
+ */
+
+body#product .product-facilities-info,
+body#checkout .product-facilities-info,
+body#cart .product-facilities-info {
+    margin-bottom: 0px;
+    margin-top: 20px;
+}
+
+
+body#product .product-facilities-info input[type="radio"].number_payment,
+body#checkout .product-facilities-info input[type="radio"].number_payment,
+body#cart .product-facilities-info input[type="radio"].number_payment {
+    display: none;
+}
+
+body#product .product-facilities-info input[type="radio"].number_payment+label,
+body#checkout .product-facilities-info input[type="radio"].number_payment+label,
+body#cart .product-facilities-info input[type="radio"].number_payment+label {
+    padding: 0.3rem 0.5rem;
+    padding: 0.5625rem 0.6875rem;
+    text-align: center;
+    font-weight: 400;
+    line-height: 1.375rem;
+    margin-bottom: 0.625rem;
+    cursor: pointer;
+    display: inline-grid;
+    background-color: #f5f5f5;
+}
+
+body#product .product-facilities-info input[type="radio"].number_payment+label span,
+body#checkout .product-facilities-info input[type="radio"].number_payment+label span,
+body#cart .product-facilities-info input[type="radio"].number_payment+label span {
+    display: block;
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+body#checkout .product-facilities-info input[type="radio"].number_payment:checked+label,
+body#checkout .product-facilities-info label:hover,
+body#product .product-facilities-info input[type="radio"].number_payment:checked+label,
+body#product .product-facilities-info label:hover,
+body#cart .product-facilities-info input[type="radio"].number_payment:checked+label,
+body#cart .product-facilities-info label:hover {
+    background-color: #000 !important;
+    color: #ffffff;
+}
+
+body#cart .product-facilities-info {
+    padding: 1rem;
+}
+
+/* ── Header row (title + "Comment ça marche" link) — not in the original
+   front.css, added to match the pasted production markup. ── */
+body#product .product-facilities-info-header,
+body#checkout .product-facilities-info-header,
+body#cart .product-facilities-info-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 0.625rem;
+}
+
+body#product .product-facilities-info-header h4,
+body#checkout .product-facilities-info-header h4,
+body#cart .product-facilities-info-header h4 {
+    margin: 0;
+}
+
+body#product .product-facilities-info .btn-simulator,
+body#checkout .product-facilities-info .btn-simulator,
+body#cart .product-facilities-info .btn-simulator {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    /* text-decoration: underline; */
+    cursor: pointer;
+}
