@@ -24,9 +24,11 @@
         </label>
         <input id="price_number_payment_{$slice.nb_mois|intval}" type="hidden" name="number_payment_{$slice.nb_mois|intval}" disabled value="{$slice.mensualite|floatval}">
     {/foreach}
+    {if $pf_show_36_option}
     <input id="number_payment_36" class="number_payment" type="radio" name="number_payment" value="36" disabled>
     <label for="number_payment_36">
         {l s='Jusqu\'à 36 mois' mod='paiementfacilite'}
     </label>
+    {/if}
 </div>
 {/if}

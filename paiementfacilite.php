@@ -13,6 +13,7 @@ require_once dirname(__FILE__) . '/classes/PaiementFaciliteOrganisation.php';
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteDocument.php';
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteStatus.php';
 require_once dirname(__FILE__) . '/classes/PaiementFaciliteMonthConfig.php';
+require_once dirname(__FILE__) . '/classes/PaiementFaciliteSupplierSetting.php';
 
 class PaiementFacilite extends PaymentModule
 {
@@ -252,12 +253,25 @@ class PaiementFacilite extends PaymentModule
             return false;
         }
 
+        // Product display settings tab (allowed suppliers + max months)
+        $tab6 = new Tab();
+        $tab6->active     = 1;
+        $tab6->class_name = 'AdminPaiementFaciliteProductSettings';
+        $tab6->module     = $this->name;
+        $tab6->id_parent  = (int) $parent->id;
+        foreach (Language::getLanguages() as $lang) {
+            $tab6->name[$lang['id_lang']] = 'Affichage produit';
+        }
+        if (!$tab6->add()) {
+            return false;
+        }
+
         return true;
     }
 
     private function uninstallTab()
     {
-        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges', 'AdminPaiementFaciliteDrafts', 'AdminPaiementFaciliteParent'] as $class) {
+        foreach (['AdminPaiementFaciliteRequests', 'AdminPaiementFaciliteOrganisations', 'AdminPaiementFaciliteStatus', 'AdminPaiementFaciliteAmountRanges', 'AdminPaiementFaciliteDrafts', 'AdminPaiementFaciliteProductSettings', 'AdminPaiementFaciliteParent'] as $class) {
             $id_tab = (int) Tab::getIdFromClassName($class);
             if ($id_tab) {
                 (new Tab($id_tab))->delete();
@@ -457,6 +471,22 @@ class PaiementFacilite extends PaymentModule
     // PAYMENT HOOKS
     // -------------------------------------------------------------------------
 
+    /**
+     * PaiementFaciliteSupplierSetting::getAll() hits the DB; this hook fires once per
+     * page anyway, but a static cache keeps a cart loop from re-querying per product.
+     */
+    private function cartSuppliersAllowed(Cart $cart)
+    {
+        $settings = PaiementFaciliteSupplierSetting::getAll();
+        foreach ($cart->getProducts() as $product) {
+            if (!PaiementFaciliteSupplierSetting::isAllowed($product['id_supplier'], $settings)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
     public function hookPaymentOptions($params)
     {
         if (!$this->active) {
@@ -464,6 +494,12 @@ class PaiementFacilite extends PaymentModule
         }
 
         $id_cart = $params['cart']->id;
+        $cart = new Cart($id_cart);
+
+        if (!$this->cartSuppliersAllowed($cart)) {
+            return [];
+        }
+
         $option = new PrestaShop\PrestaShop\Core\Payment\PaymentOption();
         $option->setCallToActionText($this->l('Paiement par facilité '));
         $option->setAction($this->context->link->getModuleLink($this->name, 'request', ['id_cart' => $id_cart], true));
@@ -479,7 +515,6 @@ class PaiementFacilite extends PaymentModule
         if (file_exists($this->local_path . 'logo.png')) {
             $option->setLogo(Media::getMediaPath($this->local_path . 'logo.png'));
         }
-        $cart = new Cart($id_cart);
         $minprice = Configuration::get('PF_MIN_AMOUNT') ?: 300;
         if ($cart->getOrderTotal(true, Cart::BOTH) < $minprice) {
             return [];
@@ -523,6 +558,19 @@ class PaiementFacilite extends PaymentModule
             return '';
         }
 
+        $id_product = (int) ($params['id_product'] ?? $params['product']['id_product'] ?? Tools::getValue('id_product') ?? 0);
+        $maxMonths = 0;
+        if ($id_product) {
+            $id_supplier = (int) Db::getInstance()->getValue(
+                'SELECT id_supplier FROM `' . _DB_PREFIX_ . 'product` WHERE id_product = ' . $id_product
+            );
+            $settings = PaiementFaciliteSupplierSetting::getAll();
+            if (!PaiementFaciliteSupplierSetting::isAllowed($id_supplier, $settings)) {
+                return '';
+            }
+            $maxMonths = PaiementFaciliteSupplierSetting::getMaxMonths($id_supplier, $settings);
+        }
+
         $price = isset($params['price'])
             ? (float) $params['price']
             : (isset($params['product']['price_amount']) ? (float) $params['product']['price_amount'] : 0.0);
@@ -534,6 +582,9 @@ class PaiementFacilite extends PaymentModule
         $slices = [];
         foreach (PaiementFaciliteMonthConfig::getAllConfigsForJs() as $nbMois => $config) {
             if ($price < $config['minAmount']) {
+                continue;
+            }
+            if ($maxMonths > 0 && (int) $nbMois > $maxMonths) {
                 continue;
             }
             $totalWithInterest = $price * (1 + $config['interestRate'] / 100);
@@ -552,9 +603,10 @@ class PaiementFacilite extends PaymentModule
         $this->context->smarty->assign([
             'pf_product_price'        => $price,
             'pf_product_slices'       => $slices,
-            'pf_product_id'           => (int) ($params['id_product'] ?? $params['product']['id_product'] ?? Tools::getValue('id_product') ?? 0),
+            'pf_product_id'           => $id_product,
             'pf_product_attribute_id' => (int) ($params['id_product_attribute'] ?? $params['product']['id_product_attribute'] ?? Tools::getValue('id_product_attribute') ?? 0),
             'pf_request_url'          => $this->context->link->getModuleLink($this->name, 'request'),
+            'pf_show_36_option'       => $maxMonths === 0 || $maxMonths >= 36,
         ]);
 
         return $this->fetch('module:paiementfacilite/views/templates/hook/product_facility.tpl');

@@ -107,6 +107,19 @@ $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_month_configs` (
     UNIQUE KEY `nb_mois` (`nb_mois`)
 ) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
 
+// Per-supplier "Paiement par facilité" display settings: a row = that supplier is
+// allowed to show the payment method; max_months caps how many months show on the
+// product page for its products (0 = unlimited). No rows at all = no restriction.
+$sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_supplier_settings` (
+    `id_supplier_setting` int(10) unsigned NOT NULL AUTO_INCREMENT,
+    `id_supplier` int(10) unsigned NOT NULL,
+    `max_months`  tinyint(3) unsigned NOT NULL DEFAULT 0,
+    `date_add` datetime NOT NULL,
+    `date_upd` datetime NOT NULL,
+    PRIMARY KEY (`id_supplier_setting`),
+    UNIQUE KEY `id_supplier` (`id_supplier`)
+) ENGINE=' . _MYSQL_ENGINE_ . ' DEFAULT CHARSET=utf8mb4;';
+
 // Per-customer step-form draft (single row per customer, upserted on each step)
 $sql[] = 'CREATE TABLE IF NOT EXISTS `' . _DB_PREFIX_ . 'pf_drafts` (
     `id_customer` int(10) unsigned NOT NULL,
