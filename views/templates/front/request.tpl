@@ -318,9 +318,11 @@
             </label>
           {/for}
           {* Bank-processing option — bypasses the credit calculation, terms set later by the bank *}
+          {if $pf_enable_36_mois}
           <label class="pf-toggle-btn" data-mois="36">
             <input type="radio" name="nb_mois" value="36"> {l s="Jusqu'à 36 mois" mod='paiementfacilite'}
           </label>
+          {/if}
         </div>
 
         {* Interest info — shown by JS only when a range with interest applies *}

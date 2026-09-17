@@ -405,6 +405,18 @@ class PaiementFacilite extends PaymentModule
         }
     }
 
+    /**
+     * Global on/off for the "Jusqu'à 36 mois" option, independent of per-supplier
+     * max_months caps. Unset config key = enabled (module default before this
+     * setting existed).
+     */
+    public static function isEnable36Mois()
+    {
+        $value = Configuration::get('PF_ENABLE_36_MOIS');
+
+        return $value === false ? true : (bool) $value;
+    }
+
     public function getContent()
     {
         $this->runUpgrades();
@@ -415,6 +427,7 @@ class PaiementFacilite extends PaymentModule
             Configuration::updateValue('PF_ADMIN_EMAIL', Tools::getValue('PF_ADMIN_EMAIL'));
             Configuration::updateValue('PF_MIN_AMOUNT', (float) Tools::getValue('PF_MIN_AMOUNT'));
             Configuration::updateValue('PF_MAX_AMOUNT', (float) Tools::getValue('PF_MAX_AMOUNT'));
+            Configuration::updateValue('PF_ENABLE_36_MOIS', (int) Tools::getValue('PF_ENABLE_36_MOIS'));
             $output .= $this->displayConfirmation($this->l('Configuration enregistrée.'));
         }
 
@@ -446,6 +459,16 @@ class PaiementFacilite extends PaymentModule
                         'name'  => 'PF_MAX_AMOUNT',
                         'class' => 'input-small',
                     ],
+                    [
+                        'type'   => 'switch',
+                        'label'  => $this->l("Activer l'option \"Jusqu'à 36 mois\""),
+                        'name'   => 'PF_ENABLE_36_MOIS',
+                        'desc'   => $this->l('Quand désactivée, cette option disparaît du formulaire de demande et de la fiche produit pour tous les fournisseurs.'),
+                        'values' => [
+                            ['id' => 'pf_enable_36_mois_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'pf_enable_36_mois_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                    ],
                 ],
                 'submit' => ['title' => $this->l('Enregistrer')],
             ],
@@ -459,9 +482,10 @@ class PaiementFacilite extends PaymentModule
         $helper->currentIndex = AdminController::$currentIndex . '&configure=' . $this->name;
         $helper->token = Tools::getAdminTokenLite('AdminModules');
         $helper->fields_value = [
-            'PF_ADMIN_EMAIL' => Configuration::get('PF_ADMIN_EMAIL'),
-            'PF_MIN_AMOUNT'  => Configuration::get('PF_MIN_AMOUNT') ?: 300,
-            'PF_MAX_AMOUNT'  => Configuration::get('PF_MAX_AMOUNT') ?: 3000,
+            'PF_ADMIN_EMAIL'     => Configuration::get('PF_ADMIN_EMAIL'),
+            'PF_MIN_AMOUNT'      => Configuration::get('PF_MIN_AMOUNT') ?: 300,
+            'PF_MAX_AMOUNT'      => Configuration::get('PF_MAX_AMOUNT') ?: 3000,
+            'PF_ENABLE_36_MOIS'  => self::isEnable36Mois(),
         ];
 
         return $helper->generateForm([$fields_form]);
@@ -475,16 +499,25 @@ class PaiementFacilite extends PaymentModule
      * PaiementFaciliteSupplierSetting::getAll() hits the DB; this hook fires once per
      * page anyway, but a static cache keeps a cart loop from re-querying per product.
      */
+    /**
+     * Shows the payment method if the cart has AT LEAST ONE product whose
+     * id_supplier is in the configuration (not "every product must match").
+     * No rows configured at all = no restriction, always allowed.
+     */
     private function cartSuppliersAllowed(Cart $cart)
     {
         $settings = PaiementFaciliteSupplierSetting::getAll();
+        if (empty($settings)) {
+            return true;
+        }
+
         foreach ($cart->getProducts() as $product) {
-            if (!PaiementFaciliteSupplierSetting::isAllowed($product['id_supplier'], $settings)) {
-                return false;
+            if (PaiementFaciliteSupplierSetting::isAllowed($product['id_supplier'], $settings)) {
+                return true;
             }
         }
 
-        return true;
+        return false;
     }
 
     public function hookPaymentOptions($params)
@@ -512,9 +545,6 @@ class PaiementFacilite extends PaymentModule
             ])
         );
 
-        if (file_exists($this->local_path . 'logo.png')) {
-            $option->setLogo(Media::getMediaPath($this->local_path . 'logo.png'));
-        }
         $minprice = Configuration::get('PF_MIN_AMOUNT') ?: 300;
         if ($cart->getOrderTotal(true, Cart::BOTH) < $minprice) {
             return [];
@@ -606,7 +636,7 @@ class PaiementFacilite extends PaymentModule
             'pf_product_id'           => $id_product,
             'pf_product_attribute_id' => (int) ($params['id_product_attribute'] ?? $params['product']['id_product_attribute'] ?? Tools::getValue('id_product_attribute') ?? 0),
             'pf_request_url'          => $this->context->link->getModuleLink($this->name, 'request'),
-            'pf_show_36_option'       => $maxMonths === 0 || $maxMonths >= 36,
+            'pf_show_36_option'       => self::isEnable36Mois() && ($maxMonths === 0 || $maxMonths >= 36),
         ]);
 
         return $this->fetch('module:paiementfacilite/views/templates/hook/product_facility.tpl');

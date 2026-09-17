@@ -175,6 +175,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'customer_lastname'       => $this->context->customer->lastname,
             'customer_email'          => $this->context->customer->email,
             'max_months'             => $max_months,
+            'pf_enable_36_mois'       => PaiementFacilite::isEnable36Mois(),
             'pf_errors_json'          => $errors_json,
             'pf_server_draft_json'    => $server_draft_json,
         ]);
@@ -310,6 +311,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $commentaire      = Tools::getValue('commentaire');
 
         // 36 is the "Traitement à la banque sur dossier" option — not a regular month count
+        if ($nb_mois === 36 && !PaiementFacilite::isEnable36Mois()) {
+            $nb_mois = 6;
+        }
         if ($nb_mois !== 36 && ($nb_mois < 2 || $nb_mois > 12)) {
             $nb_mois = 6;
         }
