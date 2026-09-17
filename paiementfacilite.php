@@ -417,6 +417,19 @@ class PaiementFacilite extends PaymentModule
         return $value === false ? true : (bool) $value;
     }
 
+    /**
+     * Global on/off for the "cart already has a discount" check that blocks the
+     * partner-org interest waiver from stacking with a cart voucher. Unset config
+     * key = enabled (module default since this check was introduced).
+     * When disabled, partner-org members waive interest unconditionally, as before.
+     */
+    public static function isCartDiscountCheckEnabled()
+    {
+        $value = Configuration::get('PF_CHECK_CART_DISCOUNT');
+
+        return $value === false ? true : (bool) $value;
+    }
+
     public function getContent()
     {
         $this->runUpgrades();
@@ -428,6 +441,7 @@ class PaiementFacilite extends PaymentModule
             Configuration::updateValue('PF_MIN_AMOUNT', (float) Tools::getValue('PF_MIN_AMOUNT'));
             Configuration::updateValue('PF_MAX_AMOUNT', (float) Tools::getValue('PF_MAX_AMOUNT'));
             Configuration::updateValue('PF_ENABLE_36_MOIS', (int) Tools::getValue('PF_ENABLE_36_MOIS'));
+            Configuration::updateValue('PF_CHECK_CART_DISCOUNT', (int) Tools::getValue('PF_CHECK_CART_DISCOUNT'));
             $output .= $this->displayConfirmation($this->l('Configuration enregistrée.'));
         }
 
@@ -469,6 +483,16 @@ class PaiementFacilite extends PaymentModule
                             ['id' => 'pf_enable_36_mois_off', 'value' => 0, 'label' => $this->l('Non')],
                         ],
                     ],
+                    [
+                        'type'   => 'switch',
+                        'label'  => $this->l('Bloquer le cumul remise panier + exemption intérêts partenaire'),
+                        'name'   => 'PF_CHECK_CART_DISCOUNT',
+                        'desc'   => $this->l("Quand activée, un client d'organisme partenaire dont le panier a déjà une remise paie quand même les intérêts. Quand désactivée, l'exemption d'intérêts s'applique toujours aux partenaires, remise ou non."),
+                        'values' => [
+                            ['id' => 'pf_check_cart_discount_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'pf_check_cart_discount_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                    ],
                 ],
                 'submit' => ['title' => $this->l('Enregistrer')],
             ],
@@ -485,7 +509,8 @@ class PaiementFacilite extends PaymentModule
             'PF_ADMIN_EMAIL'     => Configuration::get('PF_ADMIN_EMAIL'),
             'PF_MIN_AMOUNT'      => Configuration::get('PF_MIN_AMOUNT') ?: 300,
             'PF_MAX_AMOUNT'      => Configuration::get('PF_MAX_AMOUNT') ?: 3000,
-            'PF_ENABLE_36_MOIS'  => self::isEnable36Mois(),
+            'PF_ENABLE_36_MOIS'      => self::isEnable36Mois(),
+            'PF_CHECK_CART_DISCOUNT' => self::isCartDiscountCheckEnabled(),
         ];
 
         return $helper->generateForm([$fields_form]);

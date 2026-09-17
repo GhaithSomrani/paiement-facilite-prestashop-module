@@ -250,9 +250,13 @@
       $('#pf-bank-processing-notice').hide();
       $tranche.prop('required', true);
 
-      // Interest rate comes from the selected month's config (0 for partner-org members)
+      // Interest rate comes from the selected month's config. Waived only for a
+      // partner-org member whose cart has no discount already applied — a cart
+      // discount means the partner benefit doesn't also waive interest.
       var cfg = getMonthConfig(nbMois);
-      var interestRate = (!PF.belongsToPartner && cfg) ? cfg.interestRate : 0;
+      var partnerWaivesInterest = PF.belongsToPartner &&
+        (!PF_CONFIG.checkCartDiscount || !PF_CONFIG.cartHasDiscount);
+      var interestRate = (!partnerWaivesInterest && cfg) ? cfg.interestRate : 0;
 
       // Total cost = full credit × (1 + rate%)
       var totalWithInterest = Math.round(amount * (1 + interestRate / 100) * 10000) / 10000;
@@ -517,7 +521,9 @@
         if (nbMoisV !== 36) {
           var tranche = parseFloat($('#pf-tranche').val()) || 0;
           var cfgV = (PF_CONFIG.monthConfigs && PF_CONFIG.monthConfigs[String(nbMoisV)]) || null;
-          var rateV = (!PF.belongsToPartner && cfgV) ? cfgV.interestRate : 0;
+          var partnerWaivesInterestV = PF.belongsToPartner &&
+            (!PF_CONFIG.checkCartDiscount || !PF_CONFIG.cartHasDiscount);
+          var rateV = (!partnerWaivesInterestV && cfgV) ? cfgV.interestRate : 0;
           var totalV = Math.round(amount * (1 + rateV / 100) * 10000) / 10000;
           // Min tranche = total / nb_mois
           var minTrV = Math.round(totalV / nbMoisV * 100) / 100;

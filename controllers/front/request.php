@@ -88,10 +88,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         if (!$selected_address_id && !empty($addresses)) {
             $selected_address_id = (int) $addresses[0]['id_address'];
         }
-
         // Partner organisations
         $organisations = PaiementFaciliteOrganisation::getActiveOrganisations();
-
+        $carttest = new Cart($id_cart);
         // Credit limits
         $min_amount = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
         $max_amount = (float) (Configuration::get('PF_MAX_AMOUNT') ?: 3000);
@@ -103,6 +102,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $order_items  = [];
         $order_fees   = [];
         $order_amount = 0.0;
+        $has_cart_discount = false;
 
         if ($id_cart) {
             $active_cart = $this->context->cart;
@@ -126,7 +126,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
                 $discount = (float) $active_cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS);
                 if ($discount > 0) {
                     $order_fees[] = ['label' => $this->module->l('Remise'), 'amount' => $discount, 'sign' => -1];
+                    $has_cart_discount = true;
                 }
+
                 $wrapping = (float) $active_cart->getOrderTotal(true, Cart::ONLY_WRAPPING);
                 if ($wrapping > 0) {
                     $order_fees[] = ['label' => $this->module->l('Emballage cadeau'), 'amount' => $wrapping, 'sign' => 1];
@@ -168,6 +170,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'pf_order_items'          => $order_items,
             'pf_order_fees'           => $order_fees,
             'pf_order_amount'         => $order_amount,
+            'pf_cart_has_discount'    => $has_cart_discount,
+            'pf_check_cart_discount'  => PaiementFacilite::isCartDiscountCheckEnabled(),
             'pf_form_action'          => $this->context->link->getModuleLink('paiementfacilite', 'request', [], true),
             'pf_ajax_url'             => $this->context->link->getModuleLink('paiementfacilite', 'request', ['ajax' => 1], true),
             'pf_is_from_checkout'     => $order_amount > 0,
@@ -319,13 +323,15 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // When initiated from checkout, lock credit_amount to the cart total
-        $credit_amount  = 0.0;
-        $id_cart_posted = (int) Tools::getValue('id_cart');
+        $credit_amount     = 0.0;
+        $cart_has_discount = false;
+        $id_cart_posted    = (int) Tools::getValue('id_cart');
 
         if ($id_cart_posted) {
             $submitted_cart = new Cart($id_cart_posted);
             if (Validate::isLoadedObject($submitted_cart) && (int) $submitted_cart->id_customer === $id_customer) {
-                $credit_amount = (float) $submitted_cart->getOrderTotal(true, Cart::BOTH);
+                $credit_amount     = (float) $submitted_cart->getOrderTotal(true, Cart::BOTH);
+                $cart_has_discount = (float) $submitted_cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS) > 0;
             }
         }
 
@@ -340,10 +346,14 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // --- Per-month config: availability range + interest rate ---
-        // Partner-org members are exempt from interest
+        // Partner-org members are exempt from interest, unless the cart already
+        // carries its own discount — the two benefits don't stack. This check is
+        // itself togglable (PF_CHECK_CART_DISCOUNT); disabled = old unconditional waiver.
+        $partner_waives_interest = $belongs_to_partner
+            && (!PaiementFacilite::isCartDiscountCheckEnabled() || !$cart_has_discount);
         $interest_rate = 0.0;
         $monthConfig   = PaiementFaciliteMonthConfig::getByMonths($nb_mois);
-        if ($monthConfig && !$belongs_to_partner) {
+        if ($monthConfig && !$partner_waives_interest) {
             $interest_rate = (float) $monthConfig->interest_rate;
             $min_cfg       = (float) $monthConfig->min_amount;
 
@@ -668,7 +678,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             true
         );
         $admin_email = Configuration::get('PF_ADMIN_EMAIL') ?: Configuration::get('PS_SHOP_EMAIL');
-  
+
         $this->context->smarty->assign([
             'pf_request'     => $request,
             'pf_id_order'    => $linked ? (int) $linked['id_order'] : 0,
@@ -708,8 +718,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $this->initContentDetails($id_request);
         } elseif (Tools::getValue('confirmed') && $id_request) {
             Tools::redirect($this->context->link->getModuleLink(
-                'paiementfacilite', 'request',
-                ['summary' => 1, 'id_request' => $id_request], true
+                'paiementfacilite',
+                'request',
+                ['summary' => 1, 'id_request' => $id_request],
+                true
             ));
         }
     }
@@ -839,8 +851,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // Idempotency: already confirmed (e.g. a stale link to an old two-step request)
         if ($request->getLinkedOrder()) {
             Tools::redirect($this->context->link->getModuleLink(
-                'paiementfacilite', 'request',
-                ['summary' => 1, 'id_request' => $id_request], true
+                'paiementfacilite',
+                'request',
+                ['summary' => 1, 'id_request' => $id_request],
+                true
             ));
             return;
         }
@@ -881,8 +895,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         return $this->context->link->getModuleLink(
-            'paiementfacilite', 'request',
-            ['summary' => 1, 'id_request' => (int) $request->id], true
+            'paiementfacilite',
+            'request',
+            ['summary' => 1, 'id_request' => (int) $request->id],
+            true
         );
     }
 }

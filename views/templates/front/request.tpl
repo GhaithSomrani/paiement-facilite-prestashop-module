@@ -526,6 +526,8 @@
       errorsJson:     {if $pf_errors_json}'{$pf_errors_json|escape:'javascript'}'{else}null{/if},
       serverDraft:    {if $pf_server_draft_json}{$pf_server_draft_json nofilter}{else}null{/if},
       orderAmount:    {$pf_order_amount|floatval},
+      cartHasDiscount: {if $pf_cart_has_discount}true{else}false{/if},
+      checkCartDiscount: {if $pf_check_cart_discount}true{else}false{/if},
       monthConfigs:   {$pf_month_configs_json nofilter},
     };
   </script>
