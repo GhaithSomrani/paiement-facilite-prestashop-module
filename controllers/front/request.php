@@ -182,6 +182,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'pf_enable_36_mois'       => PaiementFacilite::isEnable36Mois(),
             'pf_errors_json'          => $errors_json,
             'pf_server_draft_json'    => $server_draft_json,
+            'pf_step_disabled'        => array_fill_keys(PaiementFacilite::getDisabledSteps(), true),
+            'pf_disabled_steps_json'  => json_encode(PaiementFacilite::getDisabledSteps()),
         ]);
 
         $this->setTemplate('module:paiementfacilite/views/templates/front/request.tpl');
@@ -216,6 +218,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
     private function processForm()
     {
         $errors = [];
+        $disabled_steps = PaiementFacilite::getDisabledSteps();
         $id_customer = (int) $this->context->customer->id;
         $id_lang     = (int) $this->context->language->id;
 
@@ -261,7 +264,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $fonction       = $is_company ? null : Tools::getValue('fonction');
         $cin            = $is_company ? null : Tools::getValue('cin');
 
-        if (!$is_company) {
+        if (!$is_company && !in_array(4, $disabled_steps)) {
             if (empty($date_naissance) || !Validate::isDate($date_naissance)) {
                 $errors[] = $this->module->l('Date de naissance invalide.');
             }
@@ -289,23 +292,25 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $email_gerant          = Tools::getValue('email_gerant');
             $cin_gerant            = Tools::getValue('cin_gerant');
 
-            if (empty($raison_sociale)) {
-                $errors[] = $this->module->l('La raison sociale est obligatoire.');
-            }
-            if (empty($representant_legal)) {
-                $errors[] = $this->module->l('Le représentant légal est obligatoire.');
-            }
-            if (empty($date_naissance_gerant) || !Validate::isDate($date_naissance_gerant)) {
-                $errors[] = $this->module->l('Date de naissance du gérant invalide.');
-            }
-            if (empty($telephone_gerant)) {
-                $errors[] = $this->module->l('Le numéro de téléphone du gérant est obligatoire.');
-            }
-            if (empty($email_gerant) || !Validate::isEmail($email_gerant)) {
-                $errors[] = $this->module->l('Adresse email du gérant invalide.');
-            }
-            if (empty($cin_gerant)) {
-                $errors[] = $this->module->l('Le numéro de CIN du gérant est obligatoire.');
+            if (!in_array(4, $disabled_steps)) {
+                if (empty($raison_sociale)) {
+                    $errors[] = $this->module->l('La raison sociale est obligatoire.');
+                }
+                if (empty($representant_legal)) {
+                    $errors[] = $this->module->l('Le représentant légal est obligatoire.');
+                }
+                if (empty($date_naissance_gerant) || !Validate::isDate($date_naissance_gerant)) {
+                    $errors[] = $this->module->l('Date de naissance du gérant invalide.');
+                }
+                if (empty($telephone_gerant)) {
+                    $errors[] = $this->module->l('Le numéro de téléphone du gérant est obligatoire.');
+                }
+                if (empty($email_gerant) || !Validate::isEmail($email_gerant)) {
+                    $errors[] = $this->module->l('Adresse email du gérant invalide.');
+                }
+                if (empty($cin_gerant)) {
+                    $errors[] = $this->module->l('Le numéro de CIN du gérant est obligatoire.');
+                }
             }
         }
 
@@ -340,6 +345,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $credit_amount = (float) Tools::getValue('credit_amount');
             $min_amount    = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
             $max_amount    = (float) (Configuration::get('PF_MAX_AMOUNT') ?: 3000);
+            // Step disabled = no slider was shown to pick an amount; default to the floor.
+            if (in_array(5, $disabled_steps) && $credit_amount <= 0) {
+                $credit_amount = $min_amount;
+            }
             if ($credit_amount < $min_amount || $credit_amount > $max_amount) {
                 $errors[] = $this->module->l('Montant du crédit invalide.');
             }
@@ -376,6 +385,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         } else {
             // Minimum première tranche = total ÷ nb_mois
             $min_tranche = round($total_with_interest / $nb_mois, 2);
+            // Step disabled = no tranche input was shown; default to the minimum.
+            if (in_array(5, $disabled_steps) && $premiere_tranche <= 0) {
+                $premiere_tranche = $min_tranche;
+            }
             if ($premiere_tranche < $min_tranche) {
                 $errors[] = $this->module->l('La 1ère tranche doit être au minimum égale à une mensualité.');
             }
@@ -436,8 +449,9 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // --- Process document uploads (must happen now, files won't survive redirect) ---
-        // "Jusqu'à 36 mois" always requires documents, even for partner-org members
-        if (!$belongs_to_partner || $nb_mois === 36) {
+        // "Jusqu'à 36 mois" always requires documents, even for partner-org members —
+        // unless the step itself is admin-disabled, which overrides that rule too.
+        if (!in_array(6, $disabled_steps) && (!$belongs_to_partner || $nb_mois === 36)) {
             $this->processDocumentUploads($request->id, $is_company, $is_retired);
         }
 

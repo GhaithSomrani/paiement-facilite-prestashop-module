@@ -430,6 +430,47 @@ class PaiementFacilite extends PaymentModule
         return $value === false ? true : (bool) $value;
     }
 
+    /**
+     * Config key per skippable wizard step. Step 1 (Type) drives is_company/is_retired
+     * for every later step and is never skippable, so it has no entry here.
+     */
+    private static $stepConfigKeys = [
+        2 => 'PF_STEP_ORGANISME_ENABLED',
+        3 => 'PF_STEP_ADRESSE_ENABLED',
+        4 => 'PF_STEP_INFOS_ENABLED',
+        5 => 'PF_STEP_CREDIT_ENABLED',
+        6 => 'PF_STEP_DOCUMENTS_ENABLED',
+    ];
+
+    /**
+     * Global on/off per wizard step (2-6). Unset config key = enabled (module default
+     * before this setting existed), same convention as isEnable36Mois().
+     */
+    public static function isStepEnabled($step)
+    {
+        if (!isset(self::$stepConfigKeys[$step])) {
+            return true;
+        }
+        $value = Configuration::get(self::$stepConfigKeys[$step]);
+
+        return $value === false ? true : (bool) $value;
+    }
+
+    /**
+     * @return int[] Step numbers (2-6) currently disabled by admin config.
+     */
+    public static function getDisabledSteps()
+    {
+        $disabled = [];
+        foreach (array_keys(self::$stepConfigKeys) as $step) {
+            if (!self::isStepEnabled($step)) {
+                $disabled[] = $step;
+            }
+        }
+
+        return $disabled;
+    }
+
     public function getContent()
     {
         $this->runUpgrades();
@@ -442,6 +483,9 @@ class PaiementFacilite extends PaymentModule
             Configuration::updateValue('PF_MAX_AMOUNT', (float) Tools::getValue('PF_MAX_AMOUNT'));
             Configuration::updateValue('PF_ENABLE_36_MOIS', (int) Tools::getValue('PF_ENABLE_36_MOIS'));
             Configuration::updateValue('PF_CHECK_CART_DISCOUNT', (int) Tools::getValue('PF_CHECK_CART_DISCOUNT'));
+            foreach (self::$stepConfigKeys as $key) {
+                Configuration::updateValue($key, (int) Tools::getValue($key));
+            }
             $output .= $this->displayConfirmation($this->l('Configuration enregistrée.'));
         }
 
@@ -493,6 +537,56 @@ class PaiementFacilite extends PaymentModule
                             ['id' => 'pf_check_cart_discount_off', 'value' => 0, 'label' => $this->l('Non')],
                         ],
                     ],
+                    [
+                        'type'   => 'switch',
+                        'label'  => $this->l('Étape "Organisme"'),
+                        'name'   => 'PF_STEP_ORGANISME_ENABLED',
+                        'desc'   => $this->l('Quand désactivée, cette étape est masquée du formulaire de demande.'),
+                        'values' => [
+                            ['id' => 'pf_step_organisme_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'pf_step_organisme_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                    ],
+                    [
+                        'type'   => 'switch',
+                        'label'  => $this->l('Étape "Adresse"'),
+                        'name'   => 'PF_STEP_ADRESSE_ENABLED',
+                        'desc'   => $this->l('Quand désactivée, cette étape est masquée; l\'adresse par défaut du client est utilisée.'),
+                        'values' => [
+                            ['id' => 'pf_step_adresse_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'pf_step_adresse_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                    ],
+                    [
+                        'type'   => 'switch',
+                        'label'  => $this->l('Étape "Infos"'),
+                        'name'   => 'PF_STEP_INFOS_ENABLED',
+                        'desc'   => $this->l('Quand désactivée, cette étape est masquée et ses champs (CIN, fonction, etc.) ne sont plus exigés.'),
+                        'values' => [
+                            ['id' => 'pf_step_infos_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'pf_step_infos_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                    ],
+                    [
+                        'type'   => 'switch',
+                        'label'  => $this->l('Étape "Crédit"'),
+                        'name'   => 'PF_STEP_CREDIT_ENABLED',
+                        'desc'   => $this->l('Quand désactivée, cette étape est masquée; le montant minimum et la 1ère tranche minimum sont utilisés par défaut.'),
+                        'values' => [
+                            ['id' => 'pf_step_credit_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'pf_step_credit_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                    ],
+                    [
+                        'type'   => 'switch',
+                        'label'  => $this->l('Étape "Documents"'),
+                        'name'   => 'PF_STEP_DOCUMENTS_ENABLED',
+                        'desc'   => $this->l('Quand désactivée, cette étape est masquée et aucun document n\'est demandé.'),
+                        'values' => [
+                            ['id' => 'pf_step_documents_on', 'value' => 1, 'label' => $this->l('Oui')],
+                            ['id' => 'pf_step_documents_off', 'value' => 0, 'label' => $this->l('Non')],
+                        ],
+                    ],
                 ],
                 'submit' => ['title' => $this->l('Enregistrer')],
             ],
@@ -512,6 +606,9 @@ class PaiementFacilite extends PaymentModule
             'PF_ENABLE_36_MOIS'      => self::isEnable36Mois(),
             'PF_CHECK_CART_DISCOUNT' => self::isCartDiscountCheckEnabled(),
         ];
+        foreach (self::$stepConfigKeys as $step => $key) {
+            $helper->fields_value[$key] = self::isStepEnabled($step);
+        }
 
         return $helper->generateForm([$fields_form]);
     }

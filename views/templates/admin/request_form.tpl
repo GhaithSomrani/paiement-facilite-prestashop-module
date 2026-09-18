@@ -403,7 +403,7 @@
                 <th style="width:220px;">{l s='Type' mod='paiementfacilite'}</th>
                 <th>{l s='Fichier' mod='paiementfacilite'}</th>
                 <th style="width:110px;">{l s='Ajouté le' mod='paiementfacilite'}</th>
-                <th class="text-center" style="width:190px;">{l s='Actions' mod='paiementfacilite'}</th>
+                <th class="text-center" style="width:260px;">{l s='Actions' mod='paiementfacilite'}</th>
               </tr>
             </thead>
             <tbody id="pf-docs-tbody">
@@ -420,6 +420,10 @@
                 </td>
                 <td><small class="text-muted">{$doc.date_formatted|escape:'html'}</small></td>
                 <td class="text-center">
+                  <a href="{$pf_form_action|escape:'html'}&view_doc=1&id_document={$doc.id_document|intval}"
+                     class="btn btn-xs btn-default pf-view-doc-btn" data-pdf="{if $doc.file_ext == 'pdf'}1{else}0{/if}">
+                    <i class="icon-eye"></i> {l s='Consulter' mod='paiementfacilite'}
+                  </a>
                   <a href="{$pf_form_action|escape:'html'}&download_doc=1&id_document={$doc.id_document|intval}"
                      class="btn btn-xs btn-default" target="_blank">
                     <i class="icon-download"></i> {l s='Télécharger' mod='paiementfacilite'}
@@ -607,6 +611,21 @@
   </div>
 
 </form>
+
+{* ══════════════════════════════════════════════
+   MODAL — Aperçu document
+══════════════════════════════════════════════ *}
+<div class="modal fade" id="pf-doc-modal" tabindex="-1" role="dialog">
+  <div class="modal-dialog modal-lg" role="document">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+        <h4 class="modal-title">{l s='Aperçu du document' mod='paiementfacilite'}</h4>
+      </div>
+      <div class="modal-body" id="pf-doc-modal-body" style="min-height:300px;text-align:center;background:#525659;"></div>
+    </div>
+  </div>
+</div>
 
 {* ══════════════════════════════════════════════
    MODAL — Nouvelle adresse
@@ -962,6 +981,23 @@
       $btn.prop('disabled', false);
       alert('Erreur de connexion.');
     });
+  });
+
+  /* ── Document preview modal ── */
+  $(document).on('click', '.pf-view-doc-btn', function (e) {
+    e.preventDefault();
+    var url = $(this).attr('href');
+    var isPdf = $(this).data('pdf') == 1;
+    var $body = $('#pf-doc-modal-body').empty();
+    if (isPdf) {
+      $body.append($('<iframe>').attr('src', url).css({ width: '100%', height: '75vh', border: '0' }));
+    } else {
+      $body.append($('<img>').attr('src', url).css({ maxWidth: '100%', maxHeight: '75vh', marginTop: '10px' }));
+    }
+    $('#pf-doc-modal').modal('show');
+  });
+  $('#pf-doc-modal').on('hidden.bs.modal', function () {
+    $('#pf-doc-modal-body').empty();
   });
 
   /* ── Add address modal ── */

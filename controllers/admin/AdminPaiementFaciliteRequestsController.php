@@ -187,6 +187,10 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
         $address  = new Address($request->id_address);
         $linked   = $request->getLinkedOrder();
         $docs     = $request->getDocuments();
+        foreach ($docs as &$doc) {
+            $doc['is_pdf'] = strtolower(pathinfo($doc['filename'], PATHINFO_EXTENSION)) === 'pdf';
+        }
+        unset($doc);
         $org      = null;
         if ($request->id_organisation) {
             $org = new PaiementFaciliteOrganisation($request->id_organisation);
@@ -949,6 +953,29 @@ class AdminPaiementFaciliteRequestsController extends ModuleAdminController
                     if (file_exists($path)) {
                         header('Content-Type: application/octet-stream');
                         header('Content-Disposition: attachment; filename="' . basename($path) . '"');
+                        header('Content-Length: ' . filesize($path));
+                        readfile($path);
+                        exit;
+                    }
+                }
+            }
+            $this->errors[] = $this->l('Fichier introuvable.');
+        }
+
+        // Same file as download_doc, served inline (no attachment header) so the
+        // admin can preview it in a modal without saving it to disk first.
+        if (Tools::getValue('view_doc')) {
+            $id_doc = (int) Tools::getValue('id_document');
+            $doc    = new PaiementFaciliteDocument($id_doc);
+            if (Validate::isLoadedObject($doc)) {
+                $request = new PaiementFaciliteRequest($doc->id_request);
+                if (Validate::isLoadedObject($request)) {
+                    $path = $doc->getFilePath();
+                    if (file_exists($path)) {
+                        $mimes = ['jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'pdf' => 'application/pdf'];
+                        $ext   = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+                        header('Content-Type: ' . ($mimes[$ext] ?? 'application/octet-stream'));
+                        header('Content-Disposition: inline; filename="' . basename($path) . '"');
                         header('Content-Length: ' . filesize($path));
                         readfile($path);
                         exit;

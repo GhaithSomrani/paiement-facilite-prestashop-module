@@ -31,15 +31,15 @@
     <div class="pf-stepper">
       <div class="pf-step active" data-step="1"><span
           class="pf-step-num">1</span><small>{l s='Type' mod='paiementfacilite'}</small></div>
-      <div class="pf-step" data-step="2"><span
+      <div class="pf-step{if isset($pf_step_disabled.2)} pf-step-skipped{/if}" data-step="2"><span
           class="pf-step-num">2</span><small>{l s='Organisme' mod='paiementfacilite'}</small></div>
-      <div class="pf-step{if $pf_is_from_checkout} pf-step-skipped{/if}" data-step="3"><span
+      <div class="pf-step{if $pf_is_from_checkout || isset($pf_step_disabled.3)} pf-step-skipped{/if}" data-step="3"><span
           class="pf-step-num">3</span><small>{l s='Adresse' mod='paiementfacilite'}</small></div>
-      <div class="pf-step" data-step="4"><span
+      <div class="pf-step{if isset($pf_step_disabled.4)} pf-step-skipped{/if}" data-step="4"><span
           class="pf-step-num">4</span><small>{l s='Infos' mod='paiementfacilite'}</small></div>
-      <div class="pf-step" data-step="5"><span
+      <div class="pf-step{if isset($pf_step_disabled.5)} pf-step-skipped{/if}" data-step="5"><span
           class="pf-step-num">5</span><small>{l s='Crédit' mod='paiementfacilite'}</small></div>
-      <div class="pf-step" data-step="6"><span
+      <div class="pf-step{if isset($pf_step_disabled.6)} pf-step-skipped{/if}" data-step="6"><span
           class="pf-step-num">6</span><small>{l s='Documents' mod='paiementfacilite'}</small></div>
     </div>
     <div class="pf-progress-bar-wrap">
@@ -529,6 +529,7 @@
       cartHasDiscount: {if $pf_cart_has_discount}true{else}false{/if},
       checkCartDiscount: {if $pf_check_cart_discount}true{else}false{/if},
       monthConfigs:   {$pf_month_configs_json nofilter},
+      disabledSteps:  {$pf_disabled_steps_json nofilter},
     };
   </script>
 

@@ -390,15 +390,20 @@
   }
 
   /* ── Navigation ── */
+  function isStepDisabled(step) {
+    if (PF_CONFIG.isFromCheckout && step === 3) return true;
+    return PF_CONFIG.disabledSteps && PF_CONFIG.disabledSteps.indexOf(step) !== -1;
+  }
+
   function getNextStep(step) {
     var next = step + 1;
-    if (PF_CONFIG.isFromCheckout && next === 3) next = 4;
+    while (next <= PF.totalSteps && isStepDisabled(next)) next++;
     return next;
   }
 
   function getPrevStep(step) {
     var prev = step - 1;
-    if (PF_CONFIG.isFromCheckout && prev === 3) prev = 2;
+    while (prev >= 1 && isStepDisabled(prev)) prev--;
     return prev;
   }
 
@@ -799,8 +804,9 @@
     // Trigger slider recalculation
     $('#pf-credit-slider').trigger('change');
 
-    // Jump to the saved step
+    // Jump to the saved step (a step disabled after the draft was saved is skipped forward)
     var step = parseInt(draft.current_step) || 1;
+    while (step < PF.totalSteps && isStepDisabled(step)) step++;
     if (step > 1) goTo(step);
   }
 
