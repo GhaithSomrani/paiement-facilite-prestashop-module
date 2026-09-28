@@ -2,7 +2,7 @@
 <div class="product-facilities-info">
     <div class="product-facilities-info-header">
         <h4>{l s='Paiement par facilité:' mod='paiementfacilite'}</h4>
-        <a href="#" data-from="product" data-product-id="{$pf_product_id|intval}" data-product-attribute-id="{$pf_product_attribute_id|intval}" data-checked="false" type="button" class="view-all btn-simulator" data-bs-toggle="modal" data-bs-target="#kridipay-modal">
+        <a href="https://www.lamode.tn/content/14-facilite-de-paiement" data-from="product" data-product-id="{$pf_product_id|intval}" data-product-attribute-id="{$pf_product_attribute_id|intval}" data-checked="false" type="button" class="view-all btn-simulator" data-bs-toggle="modal" data-bs-target="#kridipay-modal">
                 <span>{l s='Comment ça marche' mod='paiementfacilite'}</span>
         </a>
     </div>

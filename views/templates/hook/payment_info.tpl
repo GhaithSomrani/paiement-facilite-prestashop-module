@@ -1,5 +1,5 @@
 <div class="pf-payment-info">
   <small class="text-muted">
-    {l s='Soumettez votre demande et notre équipe vous contactera sous 48h.' mod='paiementfacilite'}
+    {l s='Une liste de documents est requise. Vous serez redirigé vers un formulaire à remplir afin de soumettre votre demande. Notre équipe vous contactera dans un délai de 48 heures.' mod='paiementfacilite'}
   </small>
 </div>

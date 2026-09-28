@@ -26,21 +26,31 @@ Module installation/reinstallation from admin: Modules → Module Manager → Se
 
 ### Request Lifecycle
 ```
-Customer (logged in) → checkout "Paiement par facilité" OR standalone entry
-  → front/request.php 6-step form → PaiementFaciliteRequest saved (status: pending)
-  → redirect to ?summary=1&id_request=X (preview + PDF preview, no order yet)
-  → customer clicks "Confirmer" → order created from active cart (if any) via
-    PaymentModule::validateOrder(), request linked via pf_request_orders
+Customer (logged in) → checkout "Paiement par facilité" (hookPaymentOptions, ?id_cart=X)
+  → front/request.php::initContent() immediately calls PaymentModule::validateOrder()
+    on that cart (pending state) and redirects to ?id_order=X — same as any other
+    payment module (bank wire, cheque): the order exists before the wizard is shown
+  → 6-step form runs against id_order (amount/items locked to the order total, not
+    a cart — the cart is already converted/cleared by validateOrder())
+  → step 6 submit → PaiementFaciliteRequest saved (status: pending), documents
+    uploaded, request linked to the existing order via pf_request_orders
   → emails sent (pf_confirmation to customer w/ PDF attached, pf_admin_notification to admin)
+  → redirect straight to order-confirmation (no separate "Confirmer" click)
   → Admin: AdminPaiementFaciliteRequests → validate/reject in TWO stages:
       1. "La Mode" stage:      approve_mode  → status=approved_mode / reject_mode → rejected_mode
       2. "Employeur" stage:    approve_employeur → status=approved_emp (only allowed from approved_mode)
                                reject_employeur  → rejected_emp (only allowed from approved_mode)
   → each stage transition sends pf_approved or pf_rejected email and moves the linked
     order to whatever ps_order_state is mapped in pf_statuses.id_order_state
+
+Standalone entry (no cart at all — "Mes demandes" → "Nouvelle demande"):
+  → 6-step form runs with no id_order, credit_amount freely entered
+  → step 6 submit → PaiementFaciliteRequest saved, redirect to ?summary=1&id_request=X
+  → customer clicks "Confirmer" → IF they have an active cart at that moment, an
+    order is created from it and linked; otherwise the request stays orderless
 ```
 
-Requests do **not** always have an order: a request can be standalone (no cart at submission time) — `pf_request_orders.id_order` is nullable and `PaiementFaciliteRequest::linkOrder($id_order = null)` handles both cases.
+Requests do **not** always have an order: a genuinely standalone request can have none at all — `pf_request_orders.id_order` is nullable and `PaiementFaciliteRequest::linkOrder($id_order = null)` handles both cases. But a checkout-originated request is *always* tied to an order from the very first page load, unlike the pre-order-first design this replaced.
 
 ### Entity Classes (`classes/`)
 
@@ -77,13 +87,15 @@ Requests do **not** always have an order: a request can be standalone (no cart a
 - Requires customer login; redirects to `authentication` otherwise.
 - One controller, several states multiplexed through query params (handled in `initContent()` / `postProcess()`, in this priority order):
   - `?ajax=1` → JSON AJAX (`saveAddress`, `getAddresses`)
-  - `submitPFRequest` POST → `processForm()`, creates the `pf_requests` row and redirects to `?summary=1`
-  - `?summary=1&id_request=X` → `initContentSummary()`: preview page with computed totals, PDF preview/download links, and a "Confirmer" action; idempotent (if already linked to an order, just re-shows the summary)
-  - `?confirm_request=1&id_request=X` (POST from the summary page) → `processConfirmRequest()`: creates the order from the active cart via `validateOrder()` (skipped if cart is empty — standalone request), links it, sends `pf_confirmation`/`pf_admin_notification` emails with the PDF attached, then redirects to order-confirmation or back to summary
+  - `submitPFRequest` POST → `processForm()`, creates the `pf_requests` row, links it to `id_order` (already existing — see below), and redirects to order-confirmation
+  - `?id_cart=X` with no `id_order` yet (checkout entry, from `hookPaymentOptions`) → `initContent()` calls `validateOrder()` on that cart immediately and redirects to `?id_order=X`; the wizard is never shown against a bare cart
+  - `?id_order=X` → the 6-step wizard, with amount/items locked to that order's total (`Order::total_paid`) instead of a cart
+  - `?summary=1&id_request=X` → `initContentSummary()`: preview page with computed totals, PDF preview/download links, and — for a still-unlinked (standalone) request only — a "Confirmer" action; idempotent (if already linked to an order, just re-shows the summary)
+  - `?confirm_request=1&id_request=X` (POST from the summary page, standalone requests only) → `processConfirmRequest()`: creates an order from whatever cart is active at that moment via `validateOrder()` (skipped if no cart — request stays orderless), links it, sends `pf_confirmation`/`pf_admin_notification` emails with the PDF attached, then redirects to order-confirmation or back to summary
   - `?download_pdf=1&id_request=X` / `?pdf_html=1&id_request=X` → stream the "cession de salaire" PDF (or its raw HTML for debugging) via `HTMLTemplateCessionSalairePDF`
   - `?confirmed=1&id_request=X` (legacy) → redirects into the summary flow
-- All of the above ownership-gated: `loadOwnedRequest()` 404s (redirects home) if the request doesn't belong to the logged-in customer.
-- Credit amount is **locked to the cart total** when a cart is present at submission (checkout flow); only a standalone request (no cart) accepts a freely-entered `credit_amount` within `PF_MIN_AMOUNT`/`PF_MAX_AMOUNT`.
+- All of the above ownership-gated: `loadOwnedRequest()` 404s (redirects home) if the request doesn't belong to the logged-in customer; the `id_order`/`id_cart` entry points check `Order`/`Cart` ownership the same way.
+- Credit amount is **locked to the order total** (`Order::total_paid`) whenever `id_order` is present and owned by the customer; only a genuinely standalone request (no order at all) accepts a freely-entered `credit_amount` within `PF_MIN_AMOUNT`/`PF_MAX_AMOUNT`.
 
 **`controllers/admin/AdminPaiementFaciliteRequestsController.php`** — `ModuleAdminController`
 - List view with joins for customer, organisation, and linked order; status column uses PrestaShop's built-in badge coloring (`badge_warning`/`badge_info`/`badge_success`/`badge_danger`) across the 5 status codes.
@@ -168,8 +180,8 @@ Template variables include `{firstname}`, `{lastname}`, `{id_request}`, `{amount
 
 - **Two-stage approval, not a binary approve/reject:** always check which stage a status belongs to before writing logic against it. `approved_emp`/`rejected_emp` transitions are only valid from `approved_mode`; there's no direct `pending` → `approved_emp` path in the admin controller.
 - **Organisation "Autre" (id = -1) vs. real partner org:** the form sends `-1` to signal free-text org (`organisation_autre`), which is validated and documented like any non-partner request. Only `id_organisation > 0` (a real, loaded `PaiementFaciliteOrganisation`) sets `belongs_to_partner = true` and waives documents/interest.
-- **Credit amount is cart-derived when a cart exists:** `processForm()` only falls back to a free-form `credit_amount` input when `id_cart` isn't present/owned — don't assume the posted `credit_amount` field is authoritative in the checkout path.
+- **Credit amount is order-derived when an order exists:** `processForm()` locks `credit_amount` to `Order::total_paid` whenever `id_order` is present and owned by the customer; it only falls back to a free-form `credit_amount` input for a genuinely standalone request (no order at all) — don't assume the posted `credit_amount` field is authoritative in the checkout path.
 - **Interest and minimums come from `pf_month_configs`, frozen at submission:** editing a month config later does not retroactively change `interest_rate`/`mensualite` on existing `pf_requests` rows, mirroring the historical-commission-rate pattern used elsewhere in this module family.
-- **Order creation is deferred to the confirm step:** `processForm()` only writes the `pf_requests` row and redirects to `?summary=1`; the PS order is created later, in `processConfirmRequest()`, when the customer clicks "Confirmer" — a request can exist with no linked order at all (abandoned at the summary step, or genuinely standalone).
+- **Order creation happens up front, not at confirm:** `initContent()` calls `validateOrder()` on the cart immediately (like any other payment module) and redirects to `?id_order=X` before the wizard is even shown; `processForm()` only *links* the already-existing order (`PaiementFaciliteRequest::linkOrder()`) and never creates one for a checkout-originated request. `confirmRequest()` / `validateCartAsOrder()` still create an order from whatever cart is active, but only as the standalone-request fallback reached from the summary page's "Confirmer" button — never for a request that already carries `id_order`. A request can still exist with no linked order at all (genuinely standalone, no cart at confirm time either).
 - **Order-state changes are config-driven, not hardcoded:** `applyOrderStateFromStatus()` no-ops silently if `pf_statuses.id_order_state` isn't mapped for that status code — if order states aren't updating after an approval, check the mapping in `AdminPaiementFaciliteStatusController` before assuming the hook/controller logic is broken.
 - **Uninstall intentionally preserves data:** the SQL drop in `uninstallSql()` is defined but never called from `uninstall()` — the `$this->uninstallSql();` call is commented out.

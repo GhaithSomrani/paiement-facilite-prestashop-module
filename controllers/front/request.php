@@ -53,10 +53,35 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             return;
         }
 
-        // "Mes demandes" — the customer-account entry point (no id_cart, unlike the
-        // checkout payment-option link) shows past requests first when there are any;
-        // ?new=1 always bypasses this to jump straight into the wizard.
-        if (!Tools::getValue('id_cart') && !Tools::getValue('new')) {
+        // Coming fresh from checkout (hookPaymentOptions links here with ?id_cart=X,
+        // same as any other payment module): create the order right away instead of
+        // waiting for the wizard to finish, then continue against ?id_order=X from
+        // here on. validateOrder() converts/clears the cart, so nothing below this
+        // point may read $this->context->cart for this request again.
+        $id_cart_entry = (int) Tools::getValue('id_cart');
+        if ($id_cart_entry && !Tools::getValue('id_order')) {
+            $entry_cart = $this->context->cart;
+            if (Validate::isLoadedObject($entry_cart)
+                && (int) $entry_cart->id === $id_cart_entry
+                && $entry_cart->nbProducts() > 0
+            ) {
+                $new_id_order = $this->validateCartAsOrder($entry_cart);
+                if ($new_id_order) {
+                    Tools::redirect($this->context->link->getModuleLink(
+                        'paiementfacilite',
+                        'request',
+                        ['id_order' => $new_id_order],
+                        true
+                    ));
+                }
+                $this->errors[] = $this->module->l('Une erreur s\'est produite lors de la création de la commande.');
+            }
+        }
+
+        // "Mes demandes" — the customer-account entry point (no id_cart/id_order,
+        // unlike the checkout payment-option link) shows past requests first when
+        // there are any; ?new=1 always bypasses this to jump straight into the wizard.
+        if (!Tools::getValue('id_cart') && !Tools::getValue('id_order') && !Tools::getValue('new')) {
             $existing = PaiementFaciliteRequest::getByCustomer((int) $this->context->customer->id);
             if ($existing) {
                 $this->initContentMyRequests($existing);
@@ -67,6 +92,18 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // Detect context
         $id_order = (int) Tools::getValue('id_order');
         $id_cart  = (int) $this->context->cart->id;
+        $order    = null;
+
+        if ($id_order) {
+            $candidate_order = new Order($id_order);
+            if (Validate::isLoadedObject($candidate_order)
+                && (int) $candidate_order->id_customer === (int) $this->context->customer->id
+            ) {
+                $order = $candidate_order;
+            } else {
+                $id_order = 0;
+            }
+        }
 
         // Addresses
         $id_lang      = (int) $this->context->language->id;
@@ -75,11 +112,8 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $selected_address_id = 0;
 
         // Pre-select billing address from the order if available, then fallback to cart
-        if ($id_order) {
-            $order = new Order($id_order);
-            if (Validate::isLoadedObject($order) && (int) $order->id_address_invoice) {
-                $selected_address_id = (int) $order->id_address_invoice;
-            }
+        if ($order && (int) $order->id_address_invoice) {
+            $selected_address_id = (int) $order->id_address_invoice;
         }
         if (!$selected_address_id && $id_cart && (int) $this->context->cart->id_address_invoice) {
             $selected_address_id = (int) $this->context->cart->id_address_invoice;
@@ -90,7 +124,6 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
         // Partner organisations
         $organisations = PaiementFaciliteOrganisation::getActiveOrganisations();
-        $carttest = new Cart($id_cart);
         // Credit limits
         $min_amount = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
         $max_amount = (float) (Configuration::get('PF_MAX_AMOUNT') ?: 3000);
@@ -98,13 +131,40 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         // Per-month configs for interest rate + availability range
         $month_configs = PaiementFaciliteMonthConfig::getAllConfigsForJs();
 
-        // Load cart products for checkout context
+        // Load order (or, for a true standalone request with no order at all, cart)
+        // products for checkout context. An order takes priority — once the customer
+        // is on this page via ?id_order=X, the cart that funded it is already
+        // converted/cleared and can no longer be read for totals.
         $order_items  = [];
         $order_fees   = [];
         $order_amount = 0.0;
         $has_cart_discount = false;
 
-        if ($id_cart) {
+        if ($order) {
+            foreach ($order->getProducts() as $p) {
+                $order_items[] = [
+                    'name'  => $p['product_name'],
+                    'qty'   => (int) $p['product_quantity'],
+                    'unit'  => (float) $p['unit_price_tax_incl'],
+                    'total' => (float) $p['total_price_tax_incl'],
+                ];
+            }
+            $order_amount = (float) $order->total_paid;
+
+            $shipping = (float) $order->total_shipping;
+            if ($shipping > 0) {
+                $order_fees[] = ['label' => $this->module->l('Frais de livraison'), 'amount' => $shipping, 'sign' => 1];
+            }
+            $discount = (float) $order->total_discounts;
+            if ($discount > 0) {
+                $order_fees[] = ['label' => $this->module->l('Remise'), 'amount' => $discount, 'sign' => -1];
+                $has_cart_discount = true;
+            }
+            $wrapping = (float) $order->total_wrapping;
+            if ($wrapping > 0) {
+                $order_fees[] = ['label' => $this->module->l('Emballage cadeau'), 'amount' => $wrapping, 'sign' => 1];
+            }
+        } elseif ($id_cart) {
             $active_cart = $this->context->cart;
             if ($active_cart && $active_cart->id && $active_cart->nbProducts() > 0) {
                 foreach ($active_cart->getProducts() as $p) {
@@ -327,16 +387,21 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             $nb_mois = 6;
         }
 
-        // When initiated from checkout, lock credit_amount to the cart total
+        // When tied to an order — created up front, at checkout, see initContent() —
+        // lock credit_amount to the order total. The cart that funded it is already
+        // converted/cleared by then, so it can't be read again here.
         $credit_amount     = 0.0;
         $cart_has_discount = false;
-        $id_cart_posted    = (int) Tools::getValue('id_cart');
+        $order             = null;
 
-        if ($id_cart_posted) {
-            $submitted_cart = new Cart($id_cart_posted);
-            if (Validate::isLoadedObject($submitted_cart) && (int) $submitted_cart->id_customer === $id_customer) {
-                $credit_amount     = (float) $submitted_cart->getOrderTotal(true, Cart::BOTH);
-                $cart_has_discount = (float) $submitted_cart->getOrderTotal(true, Cart::ONLY_DISCOUNTS) > 0;
+        if ($id_order) {
+            $order = new Order($id_order);
+            if (!Validate::isLoadedObject($order) || (int) $order->id_customer !== $id_customer) {
+                $order    = null;
+                $id_order = 0;
+            } else {
+                $credit_amount     = (float) $order->total_paid;
+                $cart_has_discount = (float) $order->total_discounts > 0;
             }
         }
 
@@ -355,9 +420,10 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         // --- Per-month config: availability range + interest rate ---
-        // Partner-org members are exempt from interest, unless the cart already
-        // carries its own discount — the two benefits don't stack. This check is
-        // itself togglable (PF_CHECK_CART_DISCOUNT); disabled = old unconditional waiver.
+        // Partner-org members are exempt from interest, unless the order (or, for a
+        // standalone request, the cart) already carries its own discount — the two
+        // benefits don't stack. This check is itself togglable (PF_CHECK_CART_DISCOUNT);
+        // disabled = old unconditional waiver.
         $partner_waives_interest = $belongs_to_partner
             && (!PaiementFacilite::isCartDiscountCheckEnabled() || !$cart_has_discount);
         $interest_rate = 0.0;
@@ -460,17 +526,39 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             'DELETE FROM `' . _DB_PREFIX_ . 'pf_drafts` WHERE `id_customer` = ' . $id_customer
         );
 
-        // --- Confirm immediately: create the order (if any) and send emails right after step 6 ---
-        Tools::redirect($this->confirmRequest($request));
+        // --- Link to the order (already created up front, at checkout — see
+        // initContent()) and send emails. No validateOrder() here anymore: creating
+        // a second order for the same request would double the customer's order. ---
+        $request->linkOrder($id_order ?: null);
+        $this->module->sendConfirmationEmail($request->id);
+
+        if ($order) {
+            Tools::redirect($this->context->link->getPageLink('order-confirmation', true, null, [
+                'id_cart'   => (int) $order->id_cart,
+                'id_module' => (int) $this->module->id,
+                'id_order'  => $id_order,
+                'key'       => $this->context->customer->secure_key,
+            ]));
+        }
+
+        // Standalone request (no order at all) — same fallback as before.
+        Tools::redirect($this->context->link->getModuleLink(
+            'paiementfacilite',
+            'request',
+            ['summary' => 1, 'id_request' => (int) $request->id],
+            true
+        ));
     }
 
     /**
-     * Call validateOrder() to convert the active cart into a PS order
-     * with the "pending" state, and embed the request reference.
+     * Call validateOrder() to convert a cart into a PS order with the "pending"
+     * state. Called up front (before any pf_requests row exists — see
+     * initContent()) as well as from the standalone-request fallback below, so it
+     * takes no request id; the transaction reference is keyed on the cart instead.
      *
      * @return int Created order ID, or 0 on failure.
      */
-    private function validateCartAsOrder($id_request, Cart $cart)
+    private function validateCartAsOrder(Cart $cart)
     {
         /** @var PaiementFacilite $module */
         $module = $this->module;
@@ -481,7 +569,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         }
 
         $amount  = (float) $cart->getOrderTotal(true, Cart::BOTH);
-        $message = $module->l('Demande de paiement par facilité #') . $id_request;
+        $message = $module->l('Demande de paiement par facilité — panier #') . $cart->id;
 
         try {
             $module->validateOrder(
@@ -490,7 +578,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
                 $amount,
                 $module->displayName,
                 $message,
-                ['transaction_id' => 'PF-' . $id_request],
+                ['transaction_id' => 'PF-CART-' . $cart->id],
                 null,
                 false,
                 $this->context->customer->secure_key
@@ -498,11 +586,11 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
             return (int) $module->currentOrder;
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
-                'PaiementFacilite: validateOrder failed for request #' . $id_request . ' — ' . $e->getMessage(),
+                'PaiementFacilite: validateOrder failed for cart #' . $cart->id . ' — ' . $e->getMessage(),
                 3,
                 null,
-                'PaiementFaciliteRequest',
-                $id_request
+                'Cart',
+                $cart->id
             );
             return 0;
         }
@@ -572,7 +660,18 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
     private function redirectWithErrors(array $errors)
     {
         $this->context->cookie->pf_errors = json_encode($errors);
-        Tools::redirect($this->context->link->getModuleLink('paiementfacilite', 'request', [], true));
+
+        // Keep the order this request is tied to in the URL — without it, the retry
+        // loses its order context and falls through to "Mes demandes" instead of
+        // re-showing the wizard for the same order.
+        $params = [];
+        if ((int) Tools::getValue('id_order')) {
+            $params['id_order'] = (int) Tools::getValue('id_order');
+        } elseif ((int) Tools::getValue('id_cart')) {
+            $params['id_cart'] = (int) Tools::getValue('id_cart');
+        }
+
+        Tools::redirect($this->context->link->getModuleLink('paiementfacilite', 'request', $params, true));
     }
 
     // -------------------------------------------------------------------------
@@ -877,12 +976,15 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
     }
 
     /**
-     * Create the order from the active cart (if any), link it to the request, and
-     * send the confirmation emails. Called right after the wizard's step 6 submit —
-     * there is no separate "Confirmer ma demande" click in the normal flow anymore.
+     * Standalone-request fallback only: a request created with no order at all
+     * (see processForm()) can still be confirmed from the summary page's
+     * "Confirmer" button, which creates an order from whatever cart the customer
+     * has active at that moment. Checkout-originated requests never reach this —
+     * they're linked to their order up front and processForm() redirects straight
+     * to order-confirmation.
      *
      * @return string Redirect URL: order-confirmation if an order was created,
-     *                 otherwise the summary page (standalone request, no cart).
+     *                 otherwise the summary page (still standalone, no cart).
      */
     private function confirmRequest(PaiementFaciliteRequest $request)
     {
@@ -891,7 +993,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
         $cart_id_saved = $cart ? (int) $cart->id : 0;
 
         if ($cart && $cart->id && $cart->nbProducts() > 0) {
-            $id_order = $this->validateCartAsOrder($request->id, $cart);
+            $id_order = $this->validateCartAsOrder($cart);
         }
 
         $request->linkOrder($id_order ?: null);
