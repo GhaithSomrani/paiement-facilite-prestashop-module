@@ -1,3 +1,4 @@
+<div class="pf-product-facility-wrapper" data-pf-product-id="{$pf_product_id|intval}" data-pf-product-attribute-id="{$pf_product_attribute_id|intval}" data-pf-ajax-url="{$pf_facility_ajax_url|escape:'html':'UTF-8'}">
 {if $pf_product_slices|@count > 0}
 <div class="product-facilities-info">
     <div class="product-facilities-info-header">
@@ -32,3 +33,4 @@
     {/if}
 </div>
 {/if}
+</div>

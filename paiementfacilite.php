@@ -711,6 +711,35 @@ class PaiementFacilite extends PaymentModule
         }
 
         $id_product = (int) ($params['id_product'] ?? $params['product']['id_product'] ?? Tools::getValue('id_product') ?? 0);
+        $id_product_attribute = (int) ($params['id_product_attribute'] ?? $params['product']['id_product_attribute'] ?? Tools::getValue('id_product_attribute') ?? 0);
+        $price = isset($params['price'])
+            ? (float) $params['price']
+            : (isset($params['product']['price_amount']) ? (float) $params['product']['price_amount'] : 0.0);
+
+        return $this->renderProductFacility($id_product, $id_product_attribute, $price);
+    }
+
+    /**
+     * Builds the product-facility widget markup for a given product/combination/price.
+     * Shared by hookDisplayProductsFacilities() (initial page render) and the
+     * "facility" front controller (AJAX refresh when the displayed price changes,
+     * e.g. after switching variant) so both stay in sync with the same formula.
+     *
+     * The wrapper is always rendered (once the module+supplier checks pass) even when
+     * no slice currently qualifies, so the front JS always has a container to replace
+     * on the next price change — a combination too cheap today may qualify after
+     * switching to another variant.
+     */
+    public function renderProductFacility($id_product, $id_product_attribute, $price)
+    {
+        if (!$this->active) {
+            return '';
+        }
+
+        $id_product = (int) $id_product;
+        $id_product_attribute = (int) $id_product_attribute;
+        $price = (float) $price;
+
         $maxMonths = 0;
         if ($id_product) {
             $id_supplier = (int) Db::getInstance()->getValue(
@@ -723,41 +752,34 @@ class PaiementFacilite extends PaymentModule
             $maxMonths = PaiementFaciliteSupplierSetting::getMaxMonths($id_supplier, $settings);
         }
 
-        $price = isset($params['price'])
-            ? (float) $params['price']
-            : (isset($params['product']['price_amount']) ? (float) $params['product']['price_amount'] : 0.0);
         $minAmount = (float) (Configuration::get('PF_MIN_AMOUNT') ?: 300);
-        if ($price < $minAmount) {
-            return '';
-        }
-
         $slices = [];
-        foreach (PaiementFaciliteMonthConfig::getAllConfigsForJs() as $nbMois => $config) {
-            if ($price < $config['minAmount']) {
-                continue;
+        if ($price >= $minAmount) {
+            foreach (PaiementFaciliteMonthConfig::getAllConfigsForJs() as $nbMois => $config) {
+                if ($price < $config['minAmount']) {
+                    continue;
+                }
+                if ($maxMonths > 0 && (int) $nbMois > $maxMonths) {
+                    continue;
+                }
+                $totalWithInterest = $price * (1 + $config['interestRate'] / 100);
+                $slices[] = [
+                    'nb_mois'    => (int) $nbMois,
+                    'mensualite' => $totalWithInterest / (int) $nbMois,
+                ];
             }
-            if ($maxMonths > 0 && (int) $nbMois > $maxMonths) {
-                continue;
-            }
-            $totalWithInterest = $price * (1 + $config['interestRate'] / 100);
-            $slices[] = [
-                'nb_mois'    => (int) $nbMois,
-                'mensualite' => $totalWithInterest / (int) $nbMois,
-            ];
+            usort($slices, function ($a, $b) {
+                return $a['nb_mois'] <=> $b['nb_mois'];
+            });
         }
-        if (empty($slices)) {
-            return '';
-        }
-        usort($slices, function ($a, $b) {
-            return $a['nb_mois'] <=> $b['nb_mois'];
-        });
 
         $this->context->smarty->assign([
             'pf_product_price'        => $price,
             'pf_product_slices'       => $slices,
             'pf_product_id'           => $id_product,
-            'pf_product_attribute_id' => (int) ($params['id_product_attribute'] ?? $params['product']['id_product_attribute'] ?? Tools::getValue('id_product_attribute') ?? 0),
+            'pf_product_attribute_id' => $id_product_attribute,
             'pf_request_url'          => $this->context->link->getModuleLink($this->name, 'request'),
+            'pf_facility_ajax_url'    => $this->context->link->getModuleLink($this->name, 'facility'),
             'pf_show_36_option'       => self::isEnable36Mois() && ($maxMonths === 0 || $maxMonths >= 36),
         ]);
 
@@ -1009,7 +1031,10 @@ class PaiementFacilite extends PaymentModule
         } catch (Exception $e) {
             PrestaShopLogger::addLog(
                 'PaiementFacilite: PDF generation failed for request #' . $id_request . ' — ' . $e->getMessage(),
-                2, null, 'PaiementFaciliteRequest', $id_request
+                2,
+                null,
+                'PaiementFaciliteRequest',
+                $id_request
             );
         }
 
