@@ -61,6 +61,7 @@ class PaiementFacilite extends PaymentModule
             'moduleRoutes',
             'displayProductsFacilities',
             'actionFrontControllerSetMedia',
+            'actionHeadlessApiValidateOrder',
         ];
 
         foreach ($hooks as $hook) {
@@ -642,6 +643,86 @@ class PaiementFacilite extends PaymentModule
         return false;
     }
 
+    /**
+     * Convert a cart into a PS order in the "pending" state. Shared by the front
+     * request controller (checkout entry) and the headless checkout API.
+     *
+     * @param string|null $error Receives the failure reason, if any.
+     *
+     * @return int Created order ID, or 0 on failure.
+     */
+    public function validateCartAsOrder(Cart $cart, Customer $customer, &$error = null)
+    {
+        $id_pending_state = (int) Configuration::get('PF_OS_PENDING');
+        if (!$id_pending_state) {
+            // Fallback to PS "Awaiting bank wire payment" if our state isn't installed
+            $id_pending_state = (int) Configuration::get('PS_OS_BANKWIRE');
+        }
+
+        try {
+            $this->validateOrder(
+                (int) $cart->id,
+                $id_pending_state,
+                (float) $cart->getOrderTotal(true, Cart::BOTH),
+                $this->displayName,
+                $this->l('Demande de paiement par facilité — panier #') . $cart->id,
+                ['transaction_id' => 'PF-CART-' . $cart->id],
+                null,
+                false,
+                $customer->secure_key
+            );
+            return (int) $this->currentOrder;
+        } catch (Throwable $e) {
+            $error = $e->getMessage();
+            PrestaShopLogger::addLog(
+                'PaiementFacilite: validateOrder failed for cart #' . $cart->id . ' — ' . $e->getMessage(),
+                3,
+                null,
+                'Cart',
+                $cart->id
+            );
+            return 0;
+        }
+    }
+
+    /**
+     * Headless API checkout (headlessapi CheckoutController::validateOrder):
+     * create the order, then hand back the wizard URL to open for it.
+     *
+     * @param array{cart: Cart} $params
+     *
+     * @return array{status: string, order_id?: int, redirect_url?: string}
+     */
+    public function hookActionHeadlessApiValidateOrder($params)
+    {
+        $cart = $params['cart'];
+        if (!Validate::isLoadedObject($cart)) {
+            return ['status' => 'error', 'message' => 'Cart not loaded.'];
+        }
+        if (!$cart->nbProducts()) {
+            return ['status' => 'error', 'message' => 'Cart is empty.'];
+        }
+        if ($cart->orderExists()) {
+            return ['status' => 'error', 'message' => 'An order already exists for this cart.'];
+        }
+        $customer = new Customer((int) $cart->id_customer);
+        if (!Validate::isLoadedObject($customer)) {
+            return ['status' => 'error', 'message' => 'Cart has no customer.'];
+        }
+
+        $error = null;
+        $id_order = $this->validateCartAsOrder($cart, $customer, $error);
+        if (!$id_order) {
+            return ['status' => 'error', 'message' => $error ?: 'Order creation failed.'];
+        }
+
+        return [
+            'status' => 'pending_form',
+            'order_id' => $id_order,
+            'redirect_url' => $this->context->link->getModuleLink($this->name, 'request', ['id_order' => $id_order], true),
+        ];
+    }
+
     public function hookPaymentOptions($params)
     {
         if (!$this->active) {
@@ -656,7 +737,8 @@ class PaiementFacilite extends PaymentModule
         }
 
         $option = new PrestaShop\PrestaShop\Core\Payment\PaymentOption();
-        $option->setCallToActionText($this->l('Paiement par facilité '));
+        $option->setModuleName($this->name);
+        $option->setCallToActionText($this->l('Paiement par facilité'));
         $option->setAction($this->context->link->getModuleLink($this->name, 'request', ['id_cart' => $id_cart], true));
 
 
@@ -917,6 +999,9 @@ class PaiementFacilite extends PaymentModule
         }
         if (!$this->isRegisteredInHook('actionFrontControllerSetMedia')) {
             $this->registerHook('actionFrontControllerSetMedia');
+        }
+        if (!$this->isRegisteredInHook('actionHeadlessApiValidateOrder')) {
+            $this->registerHook('actionHeadlessApiValidateOrder');
         }
 
         $controller = Tools::getValue('controller');

@@ -560,40 +560,7 @@ class PaiementFaciliteRequestModuleFrontController extends ModuleFrontController
      */
     private function validateCartAsOrder(Cart $cart)
     {
-        /** @var PaiementFacilite $module */
-        $module = $this->module;
-        $id_pending_state = (int) Configuration::get('PF_OS_PENDING');
-        if (!$id_pending_state) {
-            // Fallback to PS "Awaiting bank wire payment" if our state isn't installed
-            $id_pending_state = (int) Configuration::get('PS_OS_BANKWIRE');
-        }
-
-        $amount  = (float) $cart->getOrderTotal(true, Cart::BOTH);
-        $message = $module->l('Demande de paiement par facilité — panier #') . $cart->id;
-
-        try {
-            $module->validateOrder(
-                (int) $cart->id,
-                $id_pending_state,
-                $amount,
-                $module->displayName,
-                $message,
-                ['transaction_id' => 'PF-CART-' . $cart->id],
-                null,
-                false,
-                $this->context->customer->secure_key
-            );
-            return (int) $module->currentOrder;
-        } catch (Exception $e) {
-            PrestaShopLogger::addLog(
-                'PaiementFacilite: validateOrder failed for cart #' . $cart->id . ' — ' . $e->getMessage(),
-                3,
-                null,
-                'Cart',
-                $cart->id
-            );
-            return 0;
-        }
+        return $this->module->validateCartAsOrder($cart, $this->context->customer);
     }
 
     private function processDocumentUploads($id_request, $is_company, $is_retired)
